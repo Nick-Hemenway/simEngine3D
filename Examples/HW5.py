@@ -46,8 +46,8 @@ temp = np.array([4,3,-5,1])
 p1 = temp/np.linalg.norm(temp) 
 
 #to be valid, the derivative p_dot must be orthogonal to p
-#to achieve this, we can set the last three values to an arbitrary value
-#and then determine what the first element of p_dot needs to be to make the 
+#to achieve this, we can set the first three values to an arbitrary value
+#and then determine what the last element of p_dot needs to be to make the 
 #two vectors orthogonal. We set the last element to zero to begin with
 p1_dot = np.array([-0.2,1.3,3.4,0])
 
@@ -66,6 +66,7 @@ r2_dot = [11, 12, 13]
 temp = np.array([3.3, -4, 5.1, 6])
 p2 = temp/np.linalg.norm(temp) 
 
+#again determining a valid set of Euler parameter derivatives
 p2_dot = np.array([0.6, -3.7, 5.1, 0])
 p2_dot[-1] = -np.dot(p2, p2_dot)/p2[-1]
 p2_dot = p2_dot/np.linalg.norm(p2_dot)
