@@ -1,10 +1,10 @@
+#add the parent folder to the search path for importing modules
 import sys
-import pathlib as pl
-root = pl.Path('../')
-sys.path.append(str(root))
+sys.path.append('..')
+
 import numpy as np
 from scipy.misc import derivative as deriv
-from utility import tilde
+from utility import tilde, column
 
 class ConstraintFunc():
     """All of the constraints contain an f(t) term. This class stores the 
@@ -80,6 +80,16 @@ class Gcon():
         
         return M
     
+    def dij_calc(self, sp_i_bar, sq_j_bar):
+        
+        rp = self.body_i.r + self.body_i.A @ sp_i_bar
+        rq = self.body_j.r + self.body_j.A @ sq_j_bar
+        
+        dij = rq - rp
+        
+        return dij
+        
+    
 class GconDP1(Gcon):
     
     def __init__(self, body_i, ai_bar, body_j, aj_bar, constraint_func = None):
@@ -89,8 +99,8 @@ class GconDP1(Gcon):
                                                           #constructor
         #store both of the local coordinate vectors ensuring they are both
         #numpy arrays
-        self.ai_bar = np.atleast_2d(ai_bar).reshape(-1,1)
-        self.aj_bar = np.atleast_2d(aj_bar).reshape(-1,1)
+        self.ai_bar = column(ai_bar)
+        self.aj_bar = column(aj_bar)
         
     def val(self, t):
         
@@ -125,6 +135,29 @@ class GconDP1(Gcon):
         
         return gamma.item()
     
+    def partial_p(self):
+        
+        pi = self.body_i.p
+        pj = self.body_j.p
+        Ai = self.body_i.A
+        Aj = self.body_j.A
+        
+        ai = Ai @ self.ai_bar
+        aj = Aj @ self.aj_bar
+        
+        dphi_dpi = aj.T @ self.B(pi, self.ai_bar)
+        dphi_dpj = ai.T @ self.B(pj, self.aj_bar)
+        
+        return dphi_dpi.flatten(), dphi_dpj.flatten()
+    
+    def partial_r(self):
+        
+        dphi_dri = np.zeros(3)
+        dphi_drj = np.zeros(3)
+        
+        return dphi_dri, dphi_drj
+        
+    
 class GconDP2(Gcon):
     
     def __init__(self, body_i, ai_bar, sp_i_bar, body_j, sq_j_bar, constraint_func = None):
@@ -134,19 +167,14 @@ class GconDP2(Gcon):
                                                           #constructor
         #store both of the local coordinate vectors ensuring they are both
         #numpy arrays
-        self.ai_bar = np.atleast_2d(ai_bar).reshape(-1,1)
-        self.sp_i_bar = np.atleast_2d(sp_i_bar).reshape(-1,1)
-        self.sq_j_bar = np.atleast_2d(sq_j_bar).reshape(-1,1)
+        self.ai_bar =   column(ai_bar)
+        self.sp_i_bar = column(sp_i_bar)
+        self.sq_j_bar = column(sq_j_bar)
         
     def val(self, t):
         
         Ai = self.body_i.A
-        Aj = self.body_j.A
-        
-        rp = self.body_i.r + Ai @ self.sp_i_bar
-        rq = self.body_j.r + Aj @ self.sp_j_bar
-        
-        dij = rq - rp
+        dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
         
         return (self.ai_bar.T @ Ai.T @ dij - self.func.val(t)).item()
     
@@ -165,15 +193,11 @@ class GconDP2(Gcon):
         rj_dot = self.body_j.r_dot
         
         Ai = self.body_i.A
-        Aj = self.body_j.A
-        
         ai = Ai @ self.ai_bar
         ai_dot = self.B(pi, self.ai_bar) @ pi_dot
         
-        rp = self.body_i.r + Ai @ self.sp_i_bar
-        rq = self.body_j.r + Aj @ self.sp_j_bar
+        dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
         
-        dij = rq - rp
         term1 =  rj_dot + self.B(pj, self.sq_j_bar) @ pj_dot
         term2 = -ri_dot + self.B(pi, self.sp_i_bar) @ pi_dot
         dij_dot = term1 + term2
@@ -187,28 +211,48 @@ class GconDP2(Gcon):
         
         return gamma.item()
     
+    def partial_p(self):
+        #comes from slide 22 of lecture 9
+        pi = self.body_i.p
+        pj = self.body_j.p
+        
+        Ai = self.body_i.A
+        ai = Ai @ self.ai_bar
+        
+        dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
+        
+        dphi_dpi = dij.T @ self.B(pi, self.ai_bar) - ai.T @ self.B(pi, self.sp_i_bar)
+        dphi_dpj = ai.T @ self.B(pj, self.sq_j_bar)
+        
+        return dphi_dpi.flatten(), dphi_dpj.flatten()
+        
     
+    def partial_r(self):
+        #comes from slide 22 of lecture 9
+        
+        Ai = self.body_i.A
+        ai = Ai @ self.ai_bar
+        
+        dphi_dri = -ai.T
+        dphi_drj =  ai.T
+        
+        return dphi_dri.flatten(), dphi_drj.flatten()
+        
+        
 class GconD(Gcon):
     
-    def __init__(self, body_i, sp_i_bar, body_j, sq_j_bar, c_vec, constraint_func = None):
+    def __init__(self, body_i, sp_i_bar, body_j, sq_j_bar, constraint_func = None):
         
         super().__init__(body_i, body_j, constraint_func) #pass arguments to 
                                                           #parent class
                                                           #constructor
         #store the local vectors ensuring they are numpy column vectors
-        self.sp_i_bar = np.atleast_2d(sp_i_bar).reshape(-1,1)
-        self.sq_j_bar = np.atleast_2d(sq_j_bar).reshape(-1,1)
-        self.c_vec = np.atleast_2d(c_vec).reshape(-1,1)
+        self.sp_i_bar = column(sp_i_bar)
+        self.sq_j_bar = column(sq_j_bar)
         
     def val(self, t):
         
-        Ai = self.body_i.A
-        Aj = self.body_j.A
-        
-        rp = self.body_i.r + Ai @ self.sp_i_bar
-        rq = self.body_j.r + Aj @ self.sp_j_bar
-        
-        dij = rq - rp
+        dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
         
         return (dij.T @ dij - self.func.val(t)).item()
     
@@ -226,13 +270,8 @@ class GconD(Gcon):
         ri_dot = self.body_i.r_dot
         rj_dot = self.body_j.r_dot
         
-        Ai = self.body_i.A
-        Aj = self.body_j.A
+        dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
         
-        rp = self.body_i.r + Ai @ self.sp_i_bar
-        rq = self.body_j.r + Aj @ self.sp_j_bar
-        
-        dij = rq - rp
         term1 =  rj_dot + self.B(pj, self.sq_j_bar) @ pj_dot
         term2 = -ri_dot + self.B(pi, self.sp_i_bar) @ pi_dot
         dij_dot = term1 + term2
@@ -245,6 +284,29 @@ class GconD(Gcon):
         
         return gamma.item()
     
+    def partial_p(self):
+        
+        #comes from slide 23, lecture 9
+        pi = self.body_i.p
+        pj = self.body_j.p
+        
+        dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
+        
+        dphi_dpi = -2*dij.T @ self.B(pi, self.sp_i_bar)
+        dphi_dpj =  2*dij.T @ self.B(pj, self.sq_j_bar)
+        
+        return dphi_dpi.flatten(), dphi_dpj.flatten()
+        
+    def partial_r(self):
+
+        #comes from slide 23, lecture 9
+        
+        dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
+        
+        dphi_dri = -2*dij.T
+        dphi_drj =  2*dij.T
+        
+        return dphi_dri.flatten(), dphi_drj.flatten()
 
 class GconCD(Gcon):
     
@@ -254,19 +316,13 @@ class GconCD(Gcon):
                                                           #parent class
                                                           #constructor
         #store the local vectors ensuring they are numpy column vectors
-        self.sp_i_bar = np.atleast_2d(sp_i_bar).reshape(-1,1)
-        self.sq_j_bar = np.atleast_2d(sq_j_bar).reshape(-1,1)
-        self.c_vec = np.atleast_2d(c_vec).reshape(-1,1)
+        self.sp_i_bar = column(sp_i_bar)
+        self.sq_j_bar = column(sq_j_bar)
+        self.c_vec =    column(c_vec)
         
     def val(self, t):
         
-        Ai = self.body_i.A
-        Aj = self.body_j.A
-        
-        rp = self.body_i.r + Ai @ self.sp_i_bar
-        rq = self.body_j.r + Aj @ self.sp_j_bar
-        
-        dij = rq - rp
+        dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
         
         return (self.c_vec.T @ dij - self.func.val(t)).item()
     
@@ -287,6 +343,24 @@ class GconCD(Gcon):
         
         return gamma.item()
     
-
-
+    def partial_p(self):
+        
+        pi = self.body_i.p
+        pj = self.body_j.p
+        
+        c = self.c_vec
+        
+        dphi_dpi = -c.T @ self.B(pi, self.sp_i_bar)
+        dphi_dpj =  c.T @ self.B(pj, self.sq_j_bar)
+        
+        return dphi_dpi.flatten(), dphi_dpj.flatten()
+    
+    def partial_r(self):
+        
+        dphi_dri = -self.c_vec.T
+        dphi_drj =  self.c_vec.T
+        
+        return dphi_dri.flatten(), dphi_drj.flatten()
+        
+        
 

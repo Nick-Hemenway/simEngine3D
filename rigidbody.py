@@ -1,5 +1,5 @@
 import numpy as np
-from utility import tilde
+from utility import tilde, column
 
 class Orientation():
     
@@ -9,17 +9,40 @@ class Orientation():
 
 class RigidBody():
     
-    def __init__(self, r, p, r_dot = None, p_dot = None):
+    def __init__(self, r = None, p = None, r_dot = None, p_dot = None, idx = None, name = None):
         
-        if r_dot == None:
+        self.idx = idx
+        
+        if name == None:
+            name = str(idx)
+        
+        #set default values to zero if none are provided
+        if r is None:
+            r = [0,0,0]
+        if p is None:
+            p = [0,0,0,0]
+        if r_dot is None:
             r_dot = [0,0,0]
-        if p_dot == None:
-            p_dot = [0,0,0]
+        if p_dot is None:
+            p_dot = [0,0,0,0]
         
-        self.r = np.atleast_2d(r).reshape(-1,1)
-        self.r_dot = np.atleast_2d(r_dot).reshape(-1,1)
-        self.p = np.atleast_2d(p).reshape(-1,1)
-        self.p_dot = np.atleast_2d(p_dot).reshape(-1,1)
+        #set attributes ensuring they are all column vectors
+        self.r =      column(r)
+        self.r_dot =  column(r_dot)
+        self.p =      column(p)
+        self.p_dot =  column(p_dot)
+        
+    def set_position(self, r):
+        self.r = column(r)
+    
+    def set_orientation(self, q):
+        self.q = column(q)
+        
+    def set_vel(self, r_dot):
+        self.r_dot = column(r_dot)
+        
+    def set_ang_vel(self, p_dot):
+        self.p_dot = column(p_dot)
     
     @property
     def A(self):
