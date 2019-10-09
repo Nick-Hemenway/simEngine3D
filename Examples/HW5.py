@@ -1,3 +1,8 @@
+import sys
+import pathlib as pl
+root = pl.Path('../')
+sys.path.append(str(root))
+
 import simEngine3D as sim
 
 r1 = [1,0,0]

@@ -1,12 +1,12 @@
 #add folders to the path so python knows where to import self made modules from
 import sys
 import pathlib as pl
-gcon_folder = pl.Path('./Gcons')
-sys.path.append(str(gcon_folder))
+gcon_folder = pl.Path('./Gcons/')
+sys.path.append(gcon_folder)
 
 import numpy as np
-from GconPrimitives import *
-from rigidbody import *
+import Gcons
+import rigidbody as body
 
 class System():
     
@@ -14,11 +14,35 @@ class System():
         
         pass
     
+    def create_body(self):
+        
+        pass
+    
+    def constraint_DP1(self):
+        
+        pass
+    
+    def constraint_DP2(self):
+        
+        pass
+    
+    
+    def constraint_D(self):
+        
+        pass
+    
+    def constraint_CD(self):
+        
+        pass
+    
+    def jacobian(self):
+        
+        pass
+    
     
 
 def main():
     
-#    dp1 = GconPrimitives.
     pass
 
 

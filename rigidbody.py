@@ -1,9 +1,20 @@
 import numpy as np
 from utility import tilde
 
+class Orientation():
+    
+    def __init__(self):
+        
+        pass
+
 class RigidBody():
     
-    def __init__(self, r, r_dot, p, p_dot):
+    def __init__(self, r, p, r_dot = None, p_dot = None):
+        
+        if r_dot == None:
+            r_dot = [0,0,0]
+        if p_dot == None:
+            p_dot = [0,0,0]
         
         self.r = np.atleast_2d(r).reshape(-1,1)
         self.r_dot = np.atleast_2d(r_dot).reshape(-1,1)
@@ -21,6 +32,7 @@ class RigidBody():
         
         return A_mat
     
+
 def main():
     
     r = [1,0,0]
