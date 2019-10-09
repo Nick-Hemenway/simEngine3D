@@ -1,7 +1,7 @@
 # simEngine3D
 General 3-Dimensional Physics Engine in Python
 
-### How to use:
+# How to use:
 The primary module that needs to be imported to use the code is `simEngine3D.py`
 which contains the definition of a `System` class. To begin, the user always
 instantiates a system. From there the user can call the various system methods
