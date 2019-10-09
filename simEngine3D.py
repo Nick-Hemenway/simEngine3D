@@ -10,8 +10,11 @@ from rigidbody import *
 
 class System():
     
-    pass
-
+    def __init__(self):
+        
+        pass
+    
+    
 
 def main():
     
