@@ -1,7 +1,7 @@
 import numpy as np
 from utility import tilde, column
 
-class Orientation():
+class ReferenceFrame():
     
     def __init__(self):
         

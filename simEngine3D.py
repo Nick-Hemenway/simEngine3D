@@ -1,8 +1,10 @@
 #add folders to the path so python knows where to import self made modules from
 import sys
-sys.path.append('Gcons')
+import pathlib as pl
+Gcon_folder = pl.Path('./Gcons/')
+sys.path.append(str(Gcon_folder))
 
-from Gcons import GconPrimitives
+from Gcons import GconPrimitives, GconIntermediate, GconDerived
 import rigidbody as body
 
 class System():
@@ -33,6 +35,9 @@ class System():
         self.bodies.append(new_body)
         
         return self.bodies[new_body.idx - 1]
+    
+    
+    ######################   CONSTRAINTS   ######################
         
     def constraint_DP1(self, body_i, ai_bar, body_j, aj_bar, constraint_func = None):
         
@@ -78,9 +83,89 @@ class System():
         
         return self.constraints[System.num_joints - 1]
     
+    def constraint_Perp1(self, body_i, ai_bar, bi_bar, body_j, cj_bar):
+        
+        System.num_constraints += 2
+        System.num_joints += 1
+        
+        con = GconIntermediate.GconPerp1(body_i, ai_bar, bi_bar, body_j, cj_bar)
+        
+        self.constraints.append(con)
+        
+        return self.constraints[System.num_joints - 1]
+    
+    def constraint_Perp2(self, body_i, ai_bar, bi_bar, sp_i_bar, body_j, sq_j_bar):
+        
+        System.num_constraints += 2
+        System.num_joints += 1
+        
+        con = GconIntermediate.GconPerp2(body_i, ai_bar, bi_bar, sp_i_bar, body_j, sq_j_bar)
+        
+        self.constraints.append(con)
+        
+        return self.constraints[System.num_joints - 1]
+    
     def constraint_func(self, f = None, f_prime = None, f_pprime = None):
         
         return GconPrimitives.ConstraintFunc(f, f_prime, f_pprime)
+    
+    
+    ######################   DERIVED JOINTS   ######################
+    
+    def joint_spherical(self, body_i, sp_i_bar, body_j, sq_j_bar):
+        
+        System.num_constraints += 3
+        System.num_joints += 1
+        
+        con = GconDerived.JointSpherical(body_i, sp_i_bar, body_j, sq_j_bar)
+        
+        self.constraints.append(con)
+        
+        return self.constraints[System.num_joints - 1]
+    
+    def joint_universal(self, body_i, sp_i_bar, ai_bar, body_j, sq_j_bar, aj_bar):
+        
+        System.num_constraints += 4
+        System.num_joints += 1
+        
+        con = GconDerived.JointUniversal(body_i, sp_i_bar, ai_bar, body_j, sq_j_bar, aj_bar)
+        
+        self.constraints.append(con)
+        
+        return self.constraints[System.num_joints - 1]
+    
+    def joint_cylindrical(self, body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar):
+        
+        System.num_constraints += 4
+        System.num_joints += 1
+        
+        con = GconDerived.JointCylindrical(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar)
+        
+        self.constraints.append(con)
+        
+        return self.constraints[System.num_joints - 1]
+    
+    def joint_revolute(self, body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar):
+        
+        System.num_constraints += 5
+        System.num_joints += 1
+        
+        con = GconDerived.JointRevolute(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar)
+        
+        self.constraints.append(con)
+        
+        return self.constraints[System.num_joints - 1]
+    
+    def joint_translational(self, body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, aj_bar, cj_bar):
+        
+        System.num_constraints += 5
+        System.num_joints += 1
+        
+        con = GconDerived.JointTranslational(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, aj_bar, cj_bar)
+        
+        self.constraints.append(con)
+        
+        return self.constraints[System.num_joints - 1]
     
     
     def jacobian(self):
