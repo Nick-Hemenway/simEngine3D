@@ -199,7 +199,7 @@ class GconDP2(Gcon):
         dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
         
         term1 =  rj_dot + self.B(pj, self.sq_j_bar) @ pj_dot
-        term2 = -ri_dot + self.B(pi, self.sp_i_bar) @ pi_dot
+        term2 = -ri_dot - self.B(pi, self.sp_i_bar) @ pi_dot
         dij_dot = term1 + term2
         
         t1 = -ai.T @ self.B(pj_dot, self.sq_j_bar) @ pj_dot
@@ -273,7 +273,7 @@ class GconD(Gcon):
         dij = self.dij_calc(self.sp_i_bar, self.sq_j_bar)
         
         term1 =  rj_dot + self.B(pj, self.sq_j_bar) @ pj_dot
-        term2 = -ri_dot + self.B(pi, self.sp_i_bar) @ pi_dot
+        term2 = -ri_dot - self.B(pi, self.sp_i_bar) @ pi_dot
         dij_dot = term1 + term2
         
         t1 =  -2*dij.T @ self.B(pj_dot, self.sq_j_bar) @ pj_dot

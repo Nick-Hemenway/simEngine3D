@@ -22,7 +22,7 @@ def constraint_output(constraint, name):
     N = 50
     title = '\n' + f'{name}'.center(10).center(N, '#') + '\n'
     print(title)
-    print(f'Value: {value}')
+    print(f'Phi: {value}')
     print(f'Nu: {nu}')
     print(f'Gamma: {gamma}')
     print(f'dphi_dri: {dphi_dri}')
