@@ -26,12 +26,12 @@ class System():
         self.constraints = []
         self.t = 0 #global time is initialized to zero
     
-    def add_body(self, r = None, p = None, r_dot = None, p_dot = None, name = None):
+    def add_body(self, r = None, p = None, r_dot = None, p_dot = None, r_ddot = None, p_ddot = None, name = None):
         
         #increment the  number of bodies in the system
         System.num_bodies += 1
         
-        new_body = body.RigidBody(r = r, p = p, r_dot = r_dot, p_dot = p_dot, idx = System.num_bodies, name = name)
+        new_body = body.RigidBody(r = r, p = p, r_dot = r_dot, p_dot = p_dot, r_ddot = r_ddot, p_ddot = p_ddot, idx = System.num_bodies, name = name)
         self.bodies.append(new_body)
         
         return self.bodies[new_body.idx - 1]
@@ -171,7 +171,6 @@ class System():
     def jacobian(self):
         
         pass
-    
     
 
 def main():
