@@ -56,10 +56,15 @@ class Gcon():
         self.body_i = body_i
         self.body_j = body_j
         
+        self.i_idx = self.body_i.idx
+        self.j_idx = self.body_j.idx
+        
         if constraint_func == None:
             self.func = ConstraintFunc()
         else:
             self.func = constraint_func
+            
+        self.DOF_constrained = 1 #all primitive constraints constrain 1 DOF
     
     def B(self, p, a_bar):
         """Returns 3x4 matrix that is created by the B operator.

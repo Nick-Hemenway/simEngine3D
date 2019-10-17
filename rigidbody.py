@@ -1,12 +1,12 @@
 import numpy as np
-from utility import tilde, column
+from utility import tilde, column, A_to_p
 
 class ReferenceFrame():
     
     def __init__(self, p = None, p_dot = None, p_ddot = None):
         
         if p is None:
-            p = [0,0,0,0]
+            p = [1,0,0,0] #A = I_3
         
         if p_dot is None:
             p_dot = [0,0,0,0]
@@ -26,6 +26,11 @@ class ReferenceFrame():
         
         else:
             self.p = column(p)
+            
+    def set_orientation_from_A(self, A):
+        
+        p = A_to_p(A)
+        self.set_orientation(p)
         
     def set_ang_vel(self, p_dot):
         
@@ -100,8 +105,8 @@ class ReferenceFrame():
         e = self.p[1::]
         e_tilde = tilde(e)
         
-        E_mat = np.zeros(3,4)
-        E_mat[:,0] = -e
+        E_mat = np.zeros((3,4))
+        E_mat[:,0] = -e.flatten()
         E_mat[:,1::] = e_tilde + e0*np.eye(3)
         
         return E_mat
@@ -114,8 +119,8 @@ class ReferenceFrame():
         e = self.p[1::]
         e_tilde = tilde(e)
         
-        G_mat = np.zeros(3,4)
-        G_mat[:,0] = -e
+        G_mat = np.zeros((3,4))
+        G_mat[:,0] = -e.flatten()
         G_mat[:,1::] = -e_tilde + e0*np.eye(3)
         
         return G_mat
@@ -125,19 +130,23 @@ class Point():
     def __init__(self, vec, body):
         
         self.vec = column(vec)
-        
+        self.body = body
+    
+    @property    
     def position(self):
         
         pos = self.body.r + self.body.A @ self.vec
         
         return pos
     
+    @property
     def velocity(self):
         
         vel = self.body.r_dot + tilde(self.body.omega) @ self.body.A @ self.vec
         
         return vel
-        
+
+    @property        
     def acceleration(self):
         
         omega_tilde = tilde(self.body.omega)
@@ -185,6 +194,12 @@ class RigidBody(ReferenceFrame):
         
     def set_accel(self, r_ddot):
         self.r_ddot = column(r_ddot)
+        
+    def create_point(self, vec):
+        
+        p = Point(vec, self)
+        
+        return p
         
     
 
