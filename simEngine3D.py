@@ -196,6 +196,14 @@ class System():
             
         return phi_vec
     
+    def partial_r(self):
+        
+        pass
+    
+    def partial_p(self):
+        
+        pass
+    
     def jacobian(self):
         
         #total number of constraints is the number of system constraints, plus
