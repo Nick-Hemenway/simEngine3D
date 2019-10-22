@@ -7,7 +7,7 @@ sys.path.append(str(Gcon_folder))
 import numpy as np
 import rigidbody
 from Gcons import GconPrimitives, GconIntermediate, GconDerived
-from utility import column
+from utility import column, tilde
 
 class System():
     
@@ -22,7 +22,8 @@ class System():
         
         #always create a ground/global reference frame as the first body when
         #instantiating a system
-        self.global_frame = rigidbody.RigidBody(idx = 0, name = 'global_frame')
+        self.global_frame = rigidbody.RigidBody(m = 0, J = [0,0,0], idx = 0, name = 'global_frame')
+        self.gravity = self.global_frame.vector([0,0,-9.80665])
         
         self.bodies = []
         self.constraints = []
@@ -32,12 +33,14 @@ class System():
         
         self.t = t
     
-    def add_body(self, r = None, p = None, r_dot = None, p_dot = None, r_ddot = None, p_ddot = None, name = None):
+    def add_body(self, m, J, r = None, p = None, r_dot = None, p_dot = None, r_ddot = None, p_ddot = None, name = None):
         
         #increment the  number of bodies in the system
         System.num_bodies += 1
         
-        new_body = rigidbody.RigidBody(r = r, p = p, r_dot = r_dot, p_dot = p_dot, r_ddot = r_ddot, p_ddot = p_ddot, idx = System.num_bodies, name = name)
+        new_body = rigidbody.RigidBody(m = m, J = J, r = r, p = p, r_dot = r_dot, p_dot = p_dot, r_ddot = r_ddot, p_ddot = p_ddot, idx = System.num_bodies, name = name)
+        new_body.add_force( force_vec = m*self.gravity, location = [0,0,0] ) #add gravity vector to body
+        
         self.bodies.append(new_body)
         
         return self.bodies[new_body.idx - 1]
@@ -196,14 +199,129 @@ class System():
             
         return phi_vec
     
+    def M(self):
+        
+        M_mat = np.zeros( (3*self.num_bodies, 3*self.num_bodies) )
+        
+        for i, body in enumerate(self.bodies):
+            
+            idx = i*3
+            M_mat[idx:idx+3, idx:idx+3] = body.m*np.eye(3)
+            
+        return M_mat
+    
+    def J(self):
+        
+        J_mat = np.zeros( (4*self.num_bodies, 4*self.num_bodies) )
+        
+        for i, body in enumerate(self.bodies):
+            
+            idx = i*4
+            G = body.G
+            J_mat[idx:idx+4, idx:idx+4] = 4 * G.T @ body.J @ G
+            
+        return J_mat
+    
+    def P(self):
+        
+        P_mat = np.zeros( (self.num_bodies, 4*self.num_bodies) )
+        
+        for i, body in enumerate(self.bodies):
+            
+            idx = i*4
+            P_mat[i, idx:idx+4] = body.p.T
+            
+        return P_mat
+    
+    
     def partial_r(self):
         
-        pass
+        phi_r = np.zeros((System.num_constraints, 3*System.num_bodies))
+        
+        row = 0
+        
+        for constraint in self.constraints:
+            
+            N = constraint.DOF_constrained #number of rows in Jacobian
+            #bodies start indexing at 1 because the global reference frame is at
+            #index zero. However, the global reference frame doesn't end up in 
+            #the jacobian so we must subtract one from the index for each body
+            #because the array starts indexing from zero.
+            i_idx = constraint.i_idx - 1 
+            j_idx = constraint.j_idx - 1
+            
+            
+            #compute partial derivatives
+            dphi_dri, dphi_drj = constraint.partial_r()
+            
+            #place partial derivatives in Jacobian but only if they are not ground
+            if i_idx < 0: #body_i is ground
+                                
+                #assign position derivatives
+                j = 3*j_idx
+                phi_r[row:row + N, j:j+3] = dphi_drj
+                
+            elif j_idx < 0: #body_j is ground
+                
+                #assign position derivatives
+                i = 3*i_idx
+                phi_r[row:row + N, i:i+3] = dphi_dri
+                
+            else: #neither body is ground
+                
+                #assign position derivatives
+                i, j = 3*i_idx, 3*j_idx
+                phi_r[row:row + N, i:i+3] = dphi_dri
+                phi_r[row:row + N, j:j+3] = dphi_drj
+                
+            row += N #move down in the Jacobian matrix
+            
+        return phi_r
     
     def partial_p(self):
         
-        pass
-    
+        phi_p = np.zeros((System.num_constraints, 4*System.num_bodies))
+        
+        row = 0
+        
+        for constraint in self.constraints:
+            
+            N = constraint.DOF_constrained #number of rows in Jacobian
+            #bodies start indexing at 1 because the global reference frame is at
+            #index zero. However, the global reference frame doesn't end up in 
+            #the jacobian so we must subtract one from the index for each body
+            #because the array starts indexing from zero.
+            i_idx = constraint.i_idx - 1 
+            j_idx = constraint.j_idx - 1
+            
+            
+            #compute partial derivatives
+            dphi_dpi, dphi_dpj = constraint.partial_p()
+            
+            #place partial derivatives in Jacobian but only if they are not ground
+            if i_idx < 0: #body_i is ground
+                                
+                #assign orientation derivatives
+                j = 4*j_idx
+                phi_p[row:row + N, j:j+4] = dphi_dpj
+                
+            elif j_idx < 0: #body_j is ground
+                
+                #assign orientation derivatives
+                i = 4*i_idx
+                phi_p[row:row + N, i:i+4] = dphi_dpi
+                
+            else: #neither body is ground
+                
+                #assign orientation derivatives
+                i, j = 4*i_idx, 4*j_idx
+                phi_p[row:row + N, i:i+4] = dphi_dpi
+                phi_p[row:row + N, j:j+4] = dphi_dpj
+                
+            row += N #move down in the Jacobian matrix
+            
+        return phi_p
+            
     def jacobian(self):
         
         #total number of constraints is the number of system constraints, plus
@@ -355,22 +473,54 @@ class System():
             idx = i*4 + offset
             getattr(body, orient)(q[idx:idx+4])
             
-            
-    def solve_position(self, tol = 1e-9):
+    def _get_r_ddot(self):
         
-        delta_mag = 2*tol
+        r_ddot_vec = np.zeros((self.num_bodies*3, 1))
+        
+        for i, body in enumerate(self.bodies):
+            
+            r_ddot_vec[i*3:i*3 + 3] = body.r_ddot
+            
+        return r_ddot_vec
+    
+    def _get_p_ddot(self):
+        
+        p_ddot_vec = np.zeros((self.num_bodies*4, 1))
+        
+        for i, body in enumerate(self.bodies):
+            
+            p_ddot_vec[i*4:i*4 + 4] = body.p_ddot
+            
+        return p_ddot_vec
+            
+            
+    def solve_position(self, tol = 1e-9, update_jacobian_every = 1):
+        
+        delta_mag = 2*tol #initial mag is twice tolerance to ensure loop starts
+        iter_count = 0 #iteration count from last time jacobian was updated
+        
+        #compute the initial jacobian and q_vector
+        J = self.jacobian()
+        q_old = self._get_generalized_coords(level = 0)
+        q_new = q_old
         
         while delta_mag > tol:
         
-            J = self.jacobian()
+            if iter_count >= update_jacobian_every:
+                
+                iter_count = 0 #reset the iteration count
+                J = self.jacobian()
+                
             phi = self.phi()
-            
             delta = np.linalg.solve(-J, phi)
-
-            q_new = self._get_generalized_coords(level = 0) + delta
+    
+            q_new = q_old + delta
             self._set_generalized_coords(q_new, level = 0)
             
+            q_old = q_new
+            
             delta_mag = np.linalg.norm(delta)
+            iter_count += 1
         
     def solve_velocity(self):
 
@@ -391,7 +541,78 @@ class System():
         
         self._set_generalized_coords(q_ddot, level = 2)
         
+    def solve_inverse_dynamics(self):
+        
+        #returns array lagrange multipliers from inverse solution
+        
+        #create LHS matrix
+        lhs = np.zeros( (7*self.num_bodies, self.num_bodies + self.num_constraints) )
+        
+        offset1 = 3*self.num_bodies
+        offset2 = self.num_constraints
+        
+        lhs[0:offset1, 0:offset2] = self.partial_r().T
+        lhs[offset1::, 0:offset2] = self.partial_p().T
+        lhs[offset1::, offset2::] = self.P().T
+        
+        #create RHS vector
+        rhs = np.zeros( (7*self.num_bodies, 1) )
+        
+        offset = 3*self.num_bodies
+        
+        #preallocate generalized force and torque vectors
+        F = np.zeros( (3*self.num_bodies, 1) )
+        tau_hat = np.zeros((4*self.num_bodies, 1))
+
+        #loop over each body and calculate net force and torque per body        
+        for i, body in enumerate(self.bodies):
+            
+            #set net body force and torque to zero
+            F_body = np.zeros((3,1))
+            N_body = np.zeros((3,1))
+            
+            #calculate net force on body
+            for force, loc in body.forces:
+                
+                fi = force.to_global()
+                F_body += fi
+                
+            #determine how much torque each force creates about the CG
+            #note that force is in global frame but torque vectors are in local frame
+                N_body += tilde(loc) @ body.A.T @ fi
+                
+            for torque in body.torques:
+                
+                ti = torque.to_global()
+                N_body += body.A.T @ ti #add torque in local reference frame to net torque
+                
+            #we must compute the generalized torques from the actual net torque
+            G = body.G
+            G_dot = body.G_dot
+            tau_body = 2*G.T @ N_body + 8*G_dot.T @ body.J @ G_dot @ body.p
+            
+            #append body specific term to overall vector
+            idx = i*3
+            F[idx:idx+3] = F_body
+            
+            idx = i*4
+            tau_hat[idx:idx+4] = tau_body
+            
+        #compute rhs
+        rhs[0:offset] = F - self.M() @ self._get_r_ddot()
+        rhs[offset::] = tau_hat - self.J() @ self._get_p_ddot()
+        
+        lagrange = np.linalg.solve(lhs, rhs)
+        
+        return lagrange
     
+    def solve_kinematics(self, tol = 1e-9, update_jacobian_every = 1):
+        
+        self.solve_position(tol, update_jacobian_every)
+        self.solve_velocity()
+        self.solve_acceleration()
+                
+        
 def main():
     
     pass

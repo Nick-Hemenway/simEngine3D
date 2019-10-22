@@ -125,6 +125,47 @@ class ReferenceFrame():
         
         return G_mat
     
+    @property
+    def G_dot(self):
+        
+        #comes from slide 12 of lecture 7
+        e0_dot = self.p_dot[0]
+        e_dot = self.p_dot[1::]
+        e_dot_tilde = tilde(e_dot)
+        
+        G_dot_mat = np.zeros((3,4))
+        G_dot_mat[:,0] = -e_dot.flatten()
+        G_dot_mat[:,1::] = -e_dot_tilde + e0_dot*np.eye(3)
+        
+        return G_dot_mat
+    
+    def vector(self, local):
+        
+        return Vector(local, self)
+    
+class Vector():
+    
+    def __init__(self, vec, frame):
+        
+        self.frame = frame
+        self.vec = column(vec)
+        
+    def to_global(self):
+        
+        return self.frame.A @ self.vec
+    
+    def to_local(self):
+        
+        return self.vec
+    
+    def __mul__(self, scalar):
+        
+        return Vector(vec = self.vec*scalar, frame = self.frame)
+    
+    def __rmul__(self, scalar):
+        
+        return Vector(vec = self.vec*scalar, frame = self.frame)
+    
 class Point():
     
     def __init__(self, vec, body):
@@ -162,8 +203,10 @@ class Point():
     
 class RigidBody(ReferenceFrame):
     
-    def __init__(self, r = None, p = None, r_dot = None, p_dot = None, r_ddot = None, p_ddot = None, idx = None, name = None):
+    def __init__(self, m, J, r = None, p = None, r_dot = None, p_dot = None, r_ddot = None, p_ddot = None, idx = None, name = None):
         
+        self.m = m
+        self.J = np.diag(J)
         self.idx = idx
         
         if name == None:
@@ -186,6 +229,9 @@ class RigidBody(ReferenceFrame):
         
         super().__init__(p, p_dot, p_ddot)
         
+        self.forces = []
+        self.torques = []
+        
     def set_position(self, r):
         self.r = column(r)
     
@@ -200,6 +246,18 @@ class RigidBody(ReferenceFrame):
         p = Point(vec, self)
         
         return p
+    
+    def add_force(self, force_vec, location):
+        
+        """force_vec must be a vector object"""
+        
+        self.forces.append( (force_vec, column(location)) )
+        
+    def add_torque(self, torque_vec):
+        
+        """torque must be a vector object"""
+        
+        self.torques.append( torque_vec )
         
     
 
@@ -210,11 +268,19 @@ def main():
     p = [1, 0, 0, 0]
     p_dot = [0,0,0,0]
     
-    b1 = RigidBody(r, r_dot, p, p_dot)
-    print(b1.p_dot)
+    b1 = RigidBody(m = 1, J = [1,1,1], r = r, r_dot = r_dot, p = p, p_dot = p_dot)
+#    print(b1.p_dot)
     
     b1.set_ang_vel([1,2,3,4])
-    print(b1.p_dot)
+#    print(b1.p_dot)
+    
+    print(b1.A)
+    v = b1.vector([1,2,3])
+    
+    v2 = 2*v
+    
+    print(v2.to_global())
+    print(v2.to_local())
 
 
 if __name__ == '__main__': main()

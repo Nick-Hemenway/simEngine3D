@@ -7,16 +7,26 @@ import numpy as np
 import simEngine3D as sim
 import matplotlib.pyplot as plt
 
+import time as timer
+
 ############   CREATE SYSTEM   ############
 
 sys1 = sim.System()
 
 ############   CREATE PENDULUM WITH REVOLUTE JOINT   ############
 
-m = 1
-J = [1,1,1]
 
 L = 2 #length to center of rod = 2 meters
+rho = 7800 #kg/m^3
+w = 0.05 #m
+
+m = rho*L*w*2
+
+Ixx = (1/12)*m*(w**2 + w**2)
+Iyy = (1/12)*m*(L**2 + w**2)
+Izz = Iyy
+
+J = [Ixx, Iyy, Izz]
 
 rod = sys1.add_body(m = m, J = J, r = [0,0,-L]) #create rod body
 
@@ -50,10 +60,9 @@ f_ddot = lambda t: -np.cos(theta(t) + offset) * theta_dot(t)**2 - np.sin(theta(t
 
 func = sys1.constraint_func(f = f, f_prime = f_dot, f_pprime = f_ddot) #create constraint function object for DP1 constraint
 
-dp1 = sys1.constraint_DP1(body_i = sys1.global_frame, ai_bar = [0,0,-1], body_j = rod, aj_bar = [0,1,0], constraint_func = func)
+driving_con = sys1.constraint_DP1(body_i = sys1.global_frame, ai_bar = [0,0,-1], body_j = rod, aj_bar = [0,1,0], constraint_func = func)
 
-
-############   PROBLEM 3   ############
+#############   PROBLEM 3   ############
 
 dt = 1e-3
 t_end = 10
@@ -61,6 +70,9 @@ t_end = 10
 time = np.arange(0, t_end + dt/2, dt) #create array of all of the solution times
 
 N = time.shape[0]
+
+Torque = np.zeros((N,3))
+Force_reaction = np.zeros((N,3))
 
 #preallocate solution arrays for all of the quantities we want time histories of
 r_o = np.zeros( (N, 3) )
@@ -73,18 +85,39 @@ r_q_ddot = np.zeros( (N, 3) )
 
 pQ = rod.create_point([-L,0,0])
 
+start = timer.time()
+
 for i, t in enumerate(time):
     
     #update the time of the system
     sys1.set_system_time(t)
     
-    #solve kinematics
-    sys1.solve_position(tol = 1e-6)
-    sys1.solve_velocity()
-    sys1.solve_acceleration()
+    #solve kinematics for time step
+    sys1.solve_kinematics(tol = 1e-6, update_jacobian_every = 3)
     
-    #append solutions for each time step to the overall solution arrays to track 
-    #the history of the system
+    #solve inverse dynamics for time step for lagrange multipliers
+    lam = sys1.solve_inverse_dynamics()
+    
+    #solve for joint reaction forces
+    phi_ri, phi_rj = rev.partial_r()
+    F = -phi_rj.T @ lam[0:5]
+    
+    #solve for generalized driving torque
+    phi_pi, phi_pj = driving_con.partial_p()
+    tau = sim.column(-phi_pj*lam[5])
+    
+    #convert generalized torque to actual torque
+    G = rod.G
+    G_dot = rod.G_dot
+    T_bar = 0.5*G @ tau - 4*G @ G_dot.T @ rod.J @ G_dot @ rod.p
+    T = rod.A @ T_bar
+    
+    #append reaction forces/torques to array
+    Torque[i,:] = T.flatten()
+    Force_reaction[i,:] = F.flatten()
+    
+    #append kinematic solutions for each time step to the overall solution arrays 
+    #to track the history of the system
     r_o[i,:] =      rod.r.flatten()
     r_o_dot[i,:] =  rod.r_dot.flatten()
     r_o_ddot[i,:] = rod.r_ddot.flatten()
@@ -93,8 +126,17 @@ for i, t in enumerate(time):
     r_q_dot[i,:] =  pQ.velocity.flatten()
     r_q_ddot[i,:] = pQ.acceleration.flatten()
     
+    
+stop = timer.time()
+
+print(f'Total Time: {stop - start:.2f}')
 ###########   CREATE PLOTS   ############
     
+plt.rc('font', family='serif') 
+plt.rc('font', size = 14)
+plt.rc('font', serif='Times New Roman') 
+plt.rc('mathtext', fontset = 'cm')
+
 plt.close('all') #close all currently open plots
    
 #we need to make a similar plot multiple times so we can create a general plotting 
@@ -143,4 +185,24 @@ fig6 = make_plot(time, r_q_ddot, level = 2)
 fig4.savefig('Position_Q.svg')
 fig5.savefig('Velocity_Q.svg')
 fig6.savefig('Acceleration_Q.svg')
+
+fig7 = plt.figure()
+ax7 = fig7.add_subplot(111)
+ax7.set_xlabel('Time, t [s]', fontsize = 14)
+ax7.set_ylabel(r'Torque, $\tau$ [Nm]', fontsize = 14)
+
+ax7.plot(time, Torque[:,0])
+fig7.tight_layout()
+fig7.savefig('Driving_Torque.svg')
+
+fig8 = plt.figure()
+ax8 = fig8.add_subplot(111)
+ax8.set_xlabel('Time, t [s]', fontsize = 14)
+ax8.set_ylabel(r'Reaction Force, F [N]', fontsize = 14)
+
+ax8.plot(time, Force_reaction[:,1], label = '$F_y$')
+ax8.plot(time, Force_reaction[:,2], label = '$F_z$')
+ax8.legend(fontsize = 12)
+fig8.tight_layout()
+fig8.savefig('Reaction_Forces.svg')
 
