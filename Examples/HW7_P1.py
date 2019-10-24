@@ -20,10 +20,10 @@ L = 2 #length to center of rod = 2 meters
 rho = 7800 #kg/m^3
 w = 0.05 #m
 
-m = rho*L*w*2
+m = rho*2*L*w**2
 
 Ixx = (1/12)*m*(w**2 + w**2)
-Iyy = (1/12)*m*(L**2 + w**2)
+Iyy = (1/12)*m*((2*L)**2 + w**2)
 Izz = Iyy
 
 J = [Ixx, Iyy, Izz]
@@ -104,13 +104,9 @@ for i, t in enumerate(time):
     
     #solve for generalized driving torque
     phi_pi, phi_pj = driving_con.partial_p()
-    tau = sim.column(-phi_pj*lam[5])
+    E = rod.E
     
-    #convert generalized torque to actual torque
-    G = rod.G
-    G_dot = rod.G_dot
-    T_bar = 0.5*G @ tau - 4*G @ G_dot.T @ rod.J @ G_dot @ rod.p
-    T = rod.A @ T_bar
+    T = -0.5*phi_pj @ E.T *lam[5]
     
     #append reaction forces/torques to array
     Torque[i,:] = T.flatten()
@@ -173,18 +169,18 @@ fig1 = make_plot(time, r_o, level = 0)
 fig2 = make_plot(time, r_o_dot, level = 1)
 fig3 = make_plot(time, r_o_ddot, level = 2)
 
-fig1.savefig('Position_O.svg')
-fig2.savefig('Velocity_O.svg')
-fig3.savefig('Acceleration_O.svg')
+fig1.savefig('Plots/Position_O.svg')
+fig2.savefig('Plots/Velocity_O.svg')
+fig3.savefig('Plots/Acceleration_O.svg')
     
 #plots for point q
 fig4 = make_plot(time, r_q, level = 0)
 fig5 = make_plot(time, r_q_dot, level = 1)
 fig6 = make_plot(time, r_q_ddot, level = 2)
 
-fig4.savefig('Position_Q.svg')
-fig5.savefig('Velocity_Q.svg')
-fig6.savefig('Acceleration_Q.svg')
+fig4.savefig('Plots/Position_Q.svg')
+fig5.savefig('Plots/Velocity_Q.svg')
+fig6.savefig('Plots/Acceleration_Q.svg')
 
 fig7 = plt.figure()
 ax7 = fig7.add_subplot(111)
@@ -193,7 +189,8 @@ ax7.set_ylabel(r'Torque, $\tau$ [Nm]', fontsize = 14)
 
 ax7.plot(time, Torque[:,0])
 fig7.tight_layout()
-fig7.savefig('Driving_Torque.svg')
+fig7.savefig('Plots/Driving_Torque.svg')
+fig7.savefig('Plots/Driving_Torque.png')
 
 fig8 = plt.figure()
 ax8 = fig8.add_subplot(111)
@@ -204,5 +201,6 @@ ax8.plot(time, Force_reaction[:,1], label = '$F_y$')
 ax8.plot(time, Force_reaction[:,2], label = '$F_z$')
 ax8.legend(fontsize = 12)
 fig8.tight_layout()
-fig8.savefig('Reaction_Forces.svg')
+fig8.savefig('Plots/Reaction_Forces.svg')
+fig8.savefig('Plots/Reaction_Forces.png')
 
