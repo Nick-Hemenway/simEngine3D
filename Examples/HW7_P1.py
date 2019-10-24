@@ -106,7 +106,7 @@ for i, t in enumerate(time):
     phi_pi, phi_pj = driving_con.partial_p()
     E = rod.E
     
-    T = -0.5*phi_pj @ E.T *lam[5]
+    T = -0.5*phi_pj @ E.T *lam[5] #slide 16 of lecture 9 for going from phi to pi
     
     #append reaction forces/torques to array
     Torque[i,:] = T.flatten()
