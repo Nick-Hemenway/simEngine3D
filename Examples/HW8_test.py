@@ -73,7 +73,4 @@ N = time.shape[0]
 
 #############   TEST SPACE   ############
 
-print(sys1._get_generalized_coords(level = 2))
-
-print(sys1._get_p_ddot())
-print(sys1._get_r_ddot())
+sys1.history_set()

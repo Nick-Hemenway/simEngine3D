@@ -6,19 +6,21 @@ sys.path.append(str(Gcon_folder))
 
 import numpy as np
 import rigidbody
+import Solvers
 from Gcons import GconPrimitives, GconIntermediate, GconDerived
 from utility import column, tilde
 
+
 class System():
     
-    num_bodies = 0
+    def __init__(self, h = 0.01, order = 1, solver = Solvers.BDF_Solver):
     
-    #note that there is a distinction between number of joints and number of 
-    #constraints because some joints provide more than one constraint
-    num_constraints = 0 #total number of constraints in system
-    num_joints = 0 #total number of joints in system
+        self.num_bodies = 0
     
-    def __init__(self, h = 0.01):
+        #note that there is a distinction between number of joints and number of 
+        #constraints because some joints provide more than one constraint
+        self.num_constraints = 0 #total number of constraints in system
+        self.num_joints = 0 #total number of joints in system
         
         #always create a ground/global reference frame as the first body when
         #instantiating a system
@@ -30,19 +32,53 @@ class System():
         self.t = 0 #global time is initialized to zero
         self.h = h
         
-        self.history = {'r':[], 'p':[]}
+        #a dictionary filled with lists to track the history of the system. Note that
+        #oldest entries come first in the list
+        self.history = {'r':[], 'p':[], 'r_dot':[], 'p_dot':[], 'r_ddot':[], 'p_ddot':[]}
+        
+        self.solver = solver(h = h, order = order)
+        
+    def set_solver_order(self, order):
+        
+        self.solver.set_order(order)
+        
+    def set_step_size(self, h):
+        
+        self.h = h
+        self.solver.h = h
         
     def set_system_time(self, t):
         
         self.t = t
         
+    def history_set(self):
+        
+        """This function appends the current state of the system to the history
+        list attribute"""
+        
+        r, p = self._get_generalized_coords(level = 0)
+        r_dot, p_dot = self._get_generalized_coords(level = 1)
+        r_ddot, p_ddot = self._get_generalized_coords(level = 2)
+        
+        keys = ['r', 'p', 'r_dot', 'p_dot', 'r_ddot', 'p_ddot']
+        attributes = [r, p, r_dot, p_dot, r_ddot, p_ddot]
+        
+        for key, attr in zip(keys, attributes):
+            self.history[key].append(attr)
+        
+    def history_delete_oldest(self):
+        
+        for key in self.history.keys():
+            
+            self.history[key].pop(0)
+        
     
     def add_body(self, m, J, r = None, p = None, r_dot = None, p_dot = None, r_ddot = None, p_ddot = None, name = None):
         
         #increment the  number of bodies in the system
-        System.num_bodies += 1
+        self.num_bodies += 1
         
-        new_body = rigidbody.RigidBody(m = m, J = J, r = r, p = p, r_dot = r_dot, p_dot = p_dot, r_ddot = r_ddot, p_ddot = p_ddot, idx = System.num_bodies, name = name)
+        new_body = rigidbody.RigidBody(m = m, J = J, r = r, p = p, r_dot = r_dot, p_dot = p_dot, r_ddot = r_ddot, p_ddot = p_ddot, idx = self.num_bodies, name = name)
         new_body.add_force( force_vec = m*self.gravity, location = [0,0,0] ) #add gravity vector to body
         
         self.bodies.append(new_body)
@@ -54,136 +90,135 @@ class System():
         
     def constraint_DP1(self, body_i, ai_bar, body_j, aj_bar, constraint_func = None):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconPrimitives.GconDP1(body_i, ai_bar, body_j, aj_bar, constraint_func)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
         
     def constraint_DP2(self, body_i, ai_bar, sp_i_bar, body_j, sq_j_bar, constraint_func = None):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconPrimitives.GconDP2(body_i, ai_bar, sp_i_bar, body_j, sq_j_bar, constraint_func)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def constraint_D(self, body_i, sp_i_bar, body_j, sq_j_bar, constraint_func = None):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconPrimitives.GconD(body_i, sp_i_bar, body_j, sq_j_bar, constraint_func)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def constraint_CD(self, body_i, sp_i_bar, body_j, sq_j_bar, c_vec, constraint_func = None):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconPrimitives.GconCD(body_i, sp_i_bar, body_j, sq_j_bar, c_vec, constraint_func)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def constraint_Perp1(self, body_i, ai_bar, bi_bar, body_j, cj_bar):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconIntermediate.GconPerp1(body_i, ai_bar, bi_bar, body_j, cj_bar)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def constraint_Perp2(self, body_i, ai_bar, bi_bar, sp_i_bar, body_j, sq_j_bar):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconIntermediate.GconPerp2(body_i, ai_bar, bi_bar, sp_i_bar, body_j, sq_j_bar)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def constraint_func(self, f = None, f_prime = None, f_pprime = None):
         
         return GconPrimitives.ConstraintFunc(f, f_prime, f_pprime)
     
-    
     ######################   DERIVED JOINTS   ######################
     
     def joint_spherical(self, body_i, sp_i_bar, body_j, sq_j_bar):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconDerived.JointSpherical(body_i, sp_i_bar, body_j, sq_j_bar)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def joint_universal(self, body_i, sp_i_bar, ai_bar, body_j, sq_j_bar, aj_bar):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconDerived.JointUniversal(body_i, sp_i_bar, ai_bar, body_j, sq_j_bar, aj_bar)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def joint_cylindrical(self, body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconDerived.JointCylindrical(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def joint_revolute(self, body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconDerived.JointRevolute(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def joint_translational(self, body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, aj_bar, cj_bar):
         
-        System.num_joints += 1
+        self.num_joints += 1
         
         con = GconDerived.JointTranslational(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, aj_bar, cj_bar)
-        System.num_constraints += con.DOF_constrained
+        self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
         
-        return self.constraints[System.num_joints - 1]
+        return self.constraints[self.num_joints - 1]
     
     def phi(self):
         
         #preallocate an array for phi
-        phi_vec = np.zeros((System.num_constraints + System.num_bodies, 1))
+        phi_vec = np.zeros((self.num_constraints, 1))
         
         old_idx = 0
         #add all algebraic constraint equations to phi vector
@@ -193,15 +228,20 @@ class System():
             phi_vec[old_idx:new_idx] = constraint.val(self.t)
             
             old_idx = new_idx
-        
-        #append Euler parameter normalization constraints to end of vector
-        for body in self.bodies:
-            
-            p = body.p
-            phi_vec[new_idx] = p.T @ p - 1.0
-            new_idx += 1
             
         return phi_vec
+    
+    def phi_euler(self):
+        
+        phi_vec_euler = np.zeros( (self.num_bodies, 1) )
+        
+        #append Euler parameter normalization constraints to end of vector
+        for i, body in enumerate(self.bodies):
+            
+            p = body.p
+            phi_vec_euler[i] = p.T @ p - 1.0
+
+        return phi_vec_euler        
     
     def M(self):
         
@@ -240,7 +280,7 @@ class System():
     
     def partial_r(self):
         
-        phi_r = np.zeros((System.num_constraints, 3*System.num_bodies))
+        phi_r = np.zeros((self.num_constraints, 3*self.num_bodies))
         
         row = 0
         
@@ -284,7 +324,7 @@ class System():
     
     def partial_p(self):
         
-        phi_p = np.zeros((System.num_constraints, 4*System.num_bodies))
+        phi_p = np.zeros((self.num_constraints, 4*self.num_bodies))
         
         row = 0
         
@@ -330,8 +370,8 @@ class System():
         
         #total number of constraints is the number of system constraints, plus
         #the number of bodies because each body has an Euler parameter constraint
-        J = np.zeros((System.num_constraints + System.num_bodies, 7*System.num_bodies))
-        offset = 3*System.num_bodies
+        J = np.zeros((self.num_constraints + self.num_bodies, 7*self.num_bodies))
+        offset = 3*self.num_bodies
         
         J[0:self.num_constraints, 0:3*self.num_bodies] = self.partial_r()
         J[0:self.num_constraints, 3*self.num_bodies::] = self.partial_p()
@@ -345,45 +385,71 @@ class System():
             row += 1
             
         return J
-                
-    def vel_rhs(self):
+    
+    def nu(self):
         
-        nu = np.zeros( (System.num_constraints + System.num_bodies, 1) )
+        nu_arr = np.zeros( (self.num_constraints, 1) )
         
         old_idx = 0
         #add all algebraic constraint equations to phi vector
         for constraint in self.constraints:
             
             new_idx = old_idx + constraint.DOF_constrained
-            nu[old_idx:new_idx] = constraint.vel_rhs(self.t)
+            nu_arr[old_idx:new_idx] = constraint.vel_rhs(self.t)
             
             old_idx = new_idx
+        
+        return column(nu_arr)    
+
+    def nu_euler(self):
+        
+        return np.zeros( (self.num_bodies, 1) )
+        
+                
+    def vel_rhs(self):
+        
+        rhs = np.zeros( (self.num_constraints + self.num_bodies, 1) )
+        
+        rhs[0:self.num_constraints] = self.nu() 
         
         #nu for euler parameters equals zero and we have already preallocate
         #the array full of zeros so there's no need to worry about the bottom
         #of the array
         
-        return column(nu)
-        
-    def accel_rhs(self):
+        return column(rhs)
     
-        gamma = np.zeros( (System.num_constraints + System.num_bodies, 1) )
+    def gamma(self):
+        
+        gamma_arr = np.zeros( (self.num_constraints, 1) )
         
         old_idx = 0
         #add all algebraic constraint equations to phi vector
         for constraint in self.constraints:
             
             new_idx = old_idx + constraint.DOF_constrained
-            gamma[old_idx:new_idx] = constraint.accel_rhs(self.t)
+            gamma_arr[old_idx:new_idx] = constraint.accel_rhs(self.t)
             
             old_idx = new_idx
+            
+        return column(gamma_arr)
         
-        #append Euler parameter normalization constraints to end of vector
-        for body in self.bodies:
+    def gamma_euler(self):
+        
+        gamma_arr_euler = np.zeros( (self.num_bodies, 1) )
+        
+        for i, body in enumerate(self.bodies):
             
             p_dot = body.p_dot
-            gamma[new_idx] = -2*p_dot.T @ p_dot
-            new_idx += 1
+            gamma_arr_euler[i] = -2*p_dot.T @ p_dot
+
+        return gamma_arr_euler
+    
+    def accel_rhs(self):
+    
+        gamma = np.zeros( (self.num_constraints + self.num_bodies, 1) )
+        
+        gamma[0:self.num_constraints] = self.gamma()
+        gamma[self.num_constraints::] = self.gamma_euler()
             
         return column(gamma)
     
@@ -444,6 +510,8 @@ class System():
         
         q_new = q_old
         
+        phi = np.zeros( (self.num_constraints + self.num_bodies, 1) )
+        
         while delta_mag > tol:
         
             if iter_count >= update_jacobian_every:
@@ -451,7 +519,9 @@ class System():
                 iter_count = 0 #reset the iteration count
                 J = self.jacobian()
                 
-            phi = self.phi()
+            phi[0:self.num_constraints] = self.phi()
+            phi[self.num_constraints::] = self.phi_euler()
+            
             delta = np.linalg.solve(-J, phi)
     
             q_new = q_old + delta
@@ -556,11 +626,28 @@ class System():
         self.solve_position(tol, update_jacobian_every)
         self.solve_velocity()
         self.solve_acceleration()
-                
         
+    
+    def step(self):
+        
+        pass
+        
+
 def main():
     
-    pass
-
-
+    h = 0.1
+    
+    pos_h = np.array([[1,2],[1,2]])
+    vel_h = pos_h*4
+    
+    bdf = Solvers.BDF_Solver(order = 2, h = h)
+    
+    print(bdf.C_vel(vel_h))
+    Cv = (4/3)*vel_h[:,1] - (1/3)*vel_h[:,0]
+    print(Cv)
+    
+    print(bdf.C_pos(pos_h, vel_h))
+    Cp = (4/3)*pos_h[:,1] - (1/3)*pos_h[:,0] + (8/9)*h*vel_h[:,1] - (2/9)*h*vel_h[:,0]
+    print(Cp)
+    
 if __name__ == '__main__': main()
