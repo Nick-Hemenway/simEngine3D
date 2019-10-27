@@ -18,7 +18,7 @@ class System():
     num_constraints = 0 #total number of constraints in system
     num_joints = 0 #total number of joints in system
     
-    def __init__(self):
+    def __init__(self, h = 0.01):
         
         #always create a ground/global reference frame as the first body when
         #instantiating a system
@@ -28,10 +28,14 @@ class System():
         self.bodies = []
         self.constraints = []
         self.t = 0 #global time is initialized to zero
+        self.h = h
+        
+        self.history = {'r':[], 'p':[]}
         
     def set_system_time(self, t):
         
         self.t = t
+        
     
     def add_body(self, m, J, r = None, p = None, r_dot = None, p_dot = None, r_ddot = None, p_ddot = None, name = None):
         
@@ -329,60 +333,11 @@ class System():
         J = np.zeros((System.num_constraints + System.num_bodies, 7*System.num_bodies))
         offset = 3*System.num_bodies
         
-        row = 0
-        
-        for constraint in self.constraints:
-            
-            N = constraint.DOF_constrained #number of rows in Jacobian
-            #bodies start indexing at 1 because the global reference frame is at
-            #index zero. However, the global reference frame doesn't end up in 
-            #the jacobian so we must subtract one from the index for each body
-            #because the array starts indexing from zero.
-            i_idx = constraint.i_idx - 1 
-            j_idx = constraint.j_idx - 1
-            
-            
-            #compute partial derivatives
-            dphi_dpi, dphi_dpj = constraint.partial_p()
-            dphi_dri, dphi_drj = constraint.partial_r()
-            
-            #place partial derivatives in Jacobian but only if they are not ground
-            if i_idx < 0: #body_i is ground
-                                
-                #assign position derivatives
-                j = 3*j_idx
-                J[row:row + N, j:j+3] = dphi_drj
-                
-                #assign orientation derivatives
-                j = 4*j_idx + offset
-                J[row:row + N, j:j+4] = dphi_dpj
-                
-            elif j_idx < 0: #body_j is ground
-                
-                #assign position derivatives
-                i = 3*i_idx
-                J[row:row + N, i:i+3] = dphi_dri
-                
-                #assign orientation derivatives
-                i = 4*i_idx + offset
-                J[row:row + N, i:i+4] = dphi_dpi   
-                
-            else: #neither body is ground
-                
-                #assign position derivatives
-                i, j = 3*i_idx, 3*j_idx
-                J[row:row + N, i:i+3] = dphi_dri
-                J[row:row + N, j:j+3] = dphi_drj
-                
-                #assign orientation derivatives
-                i = 4*i_idx + offset 
-                j = 4*j_idx + offset
-                J[row:row + N, i:i+4] = dphi_dpi
-                J[row:row + N, j:j+4] = dphi_dpj
-            
-            row += N #move down in the Jacobian matrix
+        J[0:self.num_constraints, 0:3*self.num_bodies] = self.partial_r()
+        J[0:self.num_constraints, 3*self.num_bodies::] = self.partial_p()
             
         #Add Euler Parameter constraint partial derivatives to bottom
+        row = self.num_constraints
         for i, body in enumerate(self.bodies):
             
             idx = i*4 + offset
@@ -437,23 +392,23 @@ class System():
         levels = [('r','p'), ('r_dot', 'p_dot'), ('r_ddot', 'p_ddot')]
         pos, orient = levels[level]
         
-        q_vec = np.zeros( (7*self.num_bodies, 1))
-        offset = 3*self.num_bodies
+        r_vec = np.zeros( (3*self.num_bodies, 1))
+        p_vec = np.zeros( (4*self.num_bodies, 1))
         
         for i, body in enumerate(self.bodies):
             
             #position coordinates
             idx = i*3
-            q_vec[idx:idx+3] = getattr(body, pos)
+            r_vec[idx:idx+3] = getattr(body, pos)
             
             #orientation coordinates
-            idx = i*4 + offset
-            q_vec[idx:idx+4] = getattr(body, orient)
+            idx = i*4
+            p_vec[idx:idx+4] = getattr(body, orient)
             
-        return q_vec
+        return r_vec, p_vec
             
     
-    def _set_generalized_coords(self, q, level = 0):
+    def _set_generalized_coords(self, r, p, level = 0):
         
         levels = [('set_position','set_orientation'), \
                   ('set_vel',     'set_ang_vel'),     \
@@ -461,37 +416,15 @@ class System():
         
         pos, orient = levels[level]
         
-        offset = 3*self.num_bodies
-        
         for i, body in enumerate(self.bodies):
             
             #position coordinates
             idx = i*3
-            getattr(body, pos)(q[idx:idx+3])
+            getattr(body, pos)(r[idx:idx+3])
             
             #orientation coordinates
-            idx = i*4 + offset
-            getattr(body, orient)(q[idx:idx+4])
-            
-    def _get_r_ddot(self):
-        
-        r_ddot_vec = np.zeros((self.num_bodies*3, 1))
-        
-        for i, body in enumerate(self.bodies):
-            
-            r_ddot_vec[i*3:i*3 + 3] = body.r_ddot
-            
-        return r_ddot_vec
-    
-    def _get_p_ddot(self):
-        
-        p_ddot_vec = np.zeros((self.num_bodies*4, 1))
-        
-        for i, body in enumerate(self.bodies):
-            
-            p_ddot_vec[i*4:i*4 + 4] = body.p_ddot
-            
-        return p_ddot_vec
+            idx = i*4
+            getattr(body, orient)(p[idx:idx+4])
             
             
     def solve_position(self, tol = 1e-9, update_jacobian_every = 1):
@@ -501,7 +434,14 @@ class System():
         
         #compute the initial jacobian and q_vector
         J = self.jacobian()
-        q_old = self._get_generalized_coords(level = 0)
+        
+        N = self.num_bodies
+        q_old = np.zeros((7*N, 1))
+        
+        r_old, p_old = self._get_generalized_coords(level = 0)
+        q_old[0:3*N] = r_old
+        q_old[3*N::] = p_old
+        
         q_new = q_old
         
         while delta_mag > tol:
@@ -515,7 +455,7 @@ class System():
             delta = np.linalg.solve(-J, phi)
     
             q_new = q_old + delta
-            self._set_generalized_coords(q_new, level = 0)
+            self._set_generalized_coords(q_new[0:3*N], q_new[3*N::], level = 0)
             
             q_old = q_new
             
@@ -529,7 +469,9 @@ class System():
         
         q_dot = np.linalg.solve(J, nu)
         
-        self._set_generalized_coords(q_dot, level = 1)
+        N = self.num_bodies
+        
+        self._set_generalized_coords(q_dot[0:3*N], q_dot[3*N::], level = 1)
         
 
     def solve_acceleration(self):
@@ -539,7 +481,9 @@ class System():
         
         q_ddot = np.linalg.solve(J, gamma)
         
-        self._set_generalized_coords(q_ddot, level = 2)
+        N = self.num_bodies
+        
+        self._set_generalized_coords(q_ddot[0:3*N], q_ddot[3*N::], level = 2)
         
     def solve_inverse_dynamics(self):
         
@@ -599,8 +543,9 @@ class System():
             tau_hat[idx:idx+4] = tau_body
             
         #compute rhs
-        rhs[0:offset] = F - self.M() @ self._get_r_ddot()
-        rhs[offset::] = tau_hat - self.J() @ self._get_p_ddot()
+        r_ddot, p_ddot = self._get_generalized_coords(level = 2)
+        rhs[0:offset] = F - self.M() @ r_ddot
+        rhs[offset::] = tau_hat - self.J() @ p_ddot
         
         lagrange = np.linalg.solve(lhs, rhs)
         
