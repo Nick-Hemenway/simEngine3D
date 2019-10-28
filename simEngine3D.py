@@ -744,7 +744,41 @@ class System():
     
     def sensitivity(self):
         
-        pass
+        nc = self.num_constraints
+        nb = self.num_bodies
+        N = 8*nb + nc
+        
+        psi = np.zeros( (N, N) )
+        
+        #offsets
+        col_offset1 = 3*nb
+        col_offset2 = col_offset1 + 4*nb
+        col_offset3 = col_offset2 + nb
+        
+        row_offset1 = 3*nb
+        row_offset2 = row_offset1 + 4*nb
+        row_offset3 = row_offset2 + nb
+        
+        #row 1
+        psi[0:row_offset1, col_offset3::]  = self.partial_r().T
+        
+#        psi[0:row_offset1, 0:col_offset1]  = psi_11
+#        psi[0:row_offset1, col_offset1:col_offset2]  = psi_12
+        
+        #row 2
+        psi[row_offset1 : row_offset2, col_offset2 : col_offset3]  = self.P().T
+        psi[row_offset1 : row_offset2, col_offset3::]  = self.partial_p().T
+
+#        psi[row_offset1 : row_offset2, 0:col_offset1]  = psi_21
+#        psi[row_offset1 : row_offset2, col_offset1:col_offset2]  = psi_22
+        
+        #row 3        
+        psi[row_offset2 : row_offset3, col_offset1 : col_offset2]  = self.P()
+
+        #row 4
+        psi[row_offset3:: , 0 : col_offset1]  = self.partial_r()
+        psi[row_offset3:: , col_offset1 : col_offset2]  = self.partial_p()
+        
     
     def _get_history_array(self, key, order):
         
