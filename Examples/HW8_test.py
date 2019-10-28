@@ -74,3 +74,7 @@ N = time.shape[0]
 #############   TEST SPACE   ############
 
 sys1.history_set()
+sys1.history_set()
+
+
+sys1._get_history_array(key = 'r', order = 2)

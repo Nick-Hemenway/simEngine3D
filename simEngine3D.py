@@ -716,10 +716,50 @@ class System():
         
     def residual(self):
         
-        pass        
-    
-    def step(self):
+        """residual is shown on slide 5 of L15"""
         
+        beta_0 = self.solver.beta_0
+        h = self.h
+        
+        nb = self.num_bodies
+        nc = self.num_constraints
+        
+        offset1 = 3*nb
+        offset2 = offset1 + 4*nb
+        offset3 = offset2 + nb
+        
+        r_ddot, p_ddot = self._get_generalized_coords(level = 2)
+        
+        g = np.zeros( (8*nb + nc, 1) )
+        
+        g[0:offset1] = self.M() @ r_ddot + self.partial_r().T @ self.lagrange - self.generalized_forces()
+        g[offset1:offset2] = self.J() @ p_ddot + self.partial_p().T @ self.lagrange + self.P().T @ self.lagrange_euler - self.generalized_torques()
+        
+        coeff = 1/(beta_0**2 * h**2)
+        
+        g[offset2:offset3] = coeff* self.phi_euler()
+        g[offset3::] = coeff* self.phi()
+        
+        return g
+    
+    def sensitivity(self):
+        
+        pass
+    
+    def _get_history_array(self, key, order):
+        
+        param = self.history[key][-order::] #list of numpy arrays
+        arr = np.hstack(param)
+        
+        return arr                
+    
+    def step(self, tol = 1e-4):
+       
+        nb = self.num_bodies
+        nc = self.num_constraints
+        delta_mag = 2*tol
+        
+        #STEP 0: PRIME NEW STEP
         #initialize the problem if at the zeroeth step
         if self.step_num == 0:
             self.initialize()
@@ -733,9 +773,93 @@ class System():
         order = min(self.order, history_cnt)
         self.solver.set_order(order)
         
+        #grab history 
+        r_h = self._get_history_array(key = 'r', order)
+        p_h = self._get_history_array(key = 'p', order)
         
+        r_dot_h = self._get_history_array(key = 'r_dot', order)
+        p_dot_h = self._get_history_array(key = 'p_dot', order)
         
+        sol = np.zeros( (8*nb + nc, 1) )
         
+        offset1 = 3*nb
+        offset2 = offset1 + 4*nb
+        offset3 = offset2 + nb
+        
+        #set lagrange parameters in solution vector at beginning. We don't need
+        #need to extact them again until the solution is solved
+        sol[offset2 : offset3] = self.lagrange_euler
+        sol[offset3::] = self.lagrange
+
+        r_ddot, p_ddot = self._get_generalized_coords(level = 2)
+        
+        sol[0:offset1] = r_ddot
+        sol[offset1:offset2] = p_ddot
+        
+        while delta_mag > tol:
+        
+            #STEP 1: COMPUTE POS AND VEL USING MOST RECENT ACCELERATIONS
+    
+            #step level 0 quantities
+            r_n = self.solver.pos_step(accel = r_ddot, pos_history = r_h, vel_history = r_dot_h)        
+            p_n = self.solver.pos_step(accel = p_ddot, pos_history = p_h, vel_history = p_dot_h)
+            
+            self._set_generalized_coords(r_n, p_n, level = 0)
+            
+            #step level 1 quantities
+            r_dot_n = self.solver.vel_step(accel = r_ddot, vel_history = r_dot_h )        
+            p_dot_n = self.solver.vel_step(accel = p_ddot, vel_history = p_dot_h)
+    
+            self._set_generalized_coords(r_dot_n, p_dot_n, level = 1)
+            
+            #STEP 2: COMPUTE RESIDUAL
+            
+            gn = self.residual()
+            
+            #STEP 3: SOLVE LINEAR SYSTEM FOR CORRECTION
+            
+            psi = self.sensitity()
+            delta = np.linalg.solve(psi, -gn)
+            
+            #STEP 4: IMPROVE APPROXIMATE SOLUTION
+            
+            sol = sol + delta
+            
+            #set system parameters from new solution
+            r_ddot = sol[0:offset1]
+            p_ddot = sol[offset1:offset2]
+            self.lagrange_euler = column(sol[offset2 : offset3])
+            self.lagrange = column(sol[offset3::])
+            
+            self._set_generalized_coords(r_ddot, p_ddot, level = 2)
+            
+            #STEP 5: CHECK STOPPING CRITERION. IF SMALL ENOUGH STEP IS DONE
+        
+            delta_mag = np.linalg.norm(delta)
+    
+        #use last acceleration data to set position and velocity level coordinates
+        #step level 0 quantities
+        r_n = self.solver.pos_step(accel = r_ddot, pos_history = r_h, vel_history = r_dot_h)        
+        p_n = self.solver.pos_step(accel = p_ddot, pos_history = p_h, vel_history = p_dot_h)
+        
+        self._set_generalized_coords(r_n, p_n, level = 0)
+        
+        #step level 1 quantities
+        r_dot_n = self.solver.vel_step(accel = r_ddot, vel_history = r_dot_h )        
+        p_dot_n = self.solver.vel_step(accel = p_ddot, vel_history = p_dot_h)
+
+        self._set_generalized_coords(r_dot_n, p_dot_n, level = 1)
+        
+        #snap-shot into system history
+        self.history_set()
+        
+        if history_cnt >= self.order:
+            #delete the oldest item out of history if we have enough data
+            self.history_delete_oldest()
+        
+        #set system lagrange parameters
+        self.lagrange_euler = sol[offset2 : offset3]
+        self.lagrange = sol[offset3::]
         
         
         
