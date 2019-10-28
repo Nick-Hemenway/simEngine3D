@@ -4,6 +4,7 @@ import pathlib as pl
 Gcon_folder = pl.Path('./Gcons/')
 sys.path.append(str(Gcon_folder))
 
+import numpy as np
 from utility import column
 
 class BDF_Solver():
@@ -39,7 +40,9 @@ class BDF_Solver():
         
     def C_pos(self, pos_history, vel_history):
         
-        return - pos_history @ self.alpha_arr + self.beta_0*self.h*self.C_vel(vel_history)
+        C = - pos_history @ self.alpha_arr + self.beta_0*self.h*self.C_vel(vel_history)
+        
+        return column( C )
     
     def C_vel(self, vel_history):
         
@@ -47,8 +50,23 @@ class BDF_Solver():
         columns correspond to a time step. Earlier (lower index) columns correspond
         to older data"""
         
-        return - vel_history @ self.alpha_arr
+        C = - vel_history @ self.alpha_arr
+        
+        return column( C )
     
+    def pos_step(self, accel, pos_history, vel_history):
+        
+        pos_n = self.C_pos(pos_history, vel_history) + self.beta_0**2* self.h**2 * accel
+        
+        return pos_n
+        
+    def vel_step(self, accel, vel_history):
+        
+        vel_n = self.C_vel(vel_history) + self.beta_0*self.h * accel
+        
+        return vel_n
+        
+        
 def main():
     
     h = 0.1
@@ -56,7 +74,7 @@ def main():
     pos_h = np.array([[1,2],[1,2]])
     vel_h = pos_h*4
     
-    bdf = Solvers.BDF_Solver(order = 2, h = h)
+    bdf = BDF_Solver(order = 2, h = h)
     
     print(bdf.C_vel(vel_h))
     Cv = (4/3)*vel_h[:,1] - (1/3)*vel_h[:,0]

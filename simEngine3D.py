@@ -30,7 +30,12 @@ class System():
         self.bodies = []
         self.constraints = []
         self.t = 0 #global time is initialized to zero
-        self.h = h
+        
+        #solver settings
+        self.order = order #order 
+        self.h = h #step size
+        
+        self.step_num = 0 #num of steps in simulation
         
         #a dictionary filled with lists to track the history of the system. Note that
         #oldest entries come first in the list
@@ -555,6 +560,61 @@ class System():
         
         self._set_generalized_coords(q_ddot[0:3*N], q_ddot[3*N::], level = 2)
         
+    def generalized_forces(self):
+        
+        F = np.zeros( (3*self.num_bodies, 1) )
+        
+        for i, body in enumerate(self.bodies):
+            
+            #set net body force and torque to zero
+            F_body = np.zeros((3,1))
+            
+            for force, loc in body.forces:
+                
+                fi = force.to_global()
+                F_body += fi
+                
+                        #append body specific term to overall vector
+            idx = i*3
+            F[idx:idx+3] = F_body
+            
+        return F
+    
+    def generalized_torques(self):
+        
+        tau_hat = np.zeros((4*self.num_bodies, 1))
+        
+        #loop over each body and calculate net force and torque per body        
+        for i, body in enumerate(self.bodies):
+            
+            #set net body force and torque to zero
+            N_body = np.zeros((3,1))
+            
+            #calculate net force on body
+            for force, loc in body.forces:
+                
+                fi = force.to_global()
+                
+            #determine how much torque each force creates about the CG
+            #note that force is in global frame but torque vectors are in local frame
+                N_body += tilde(loc) @ body.A.T @ fi
+                
+            for torque in body.torques:
+                
+                ti = torque.to_global()
+                N_body += body.A.T @ ti #add torque in local reference frame to net torque
+                
+            #we must compute the generalized torques from the actual net torque
+            G = body.G
+            G_dot = body.G_dot
+            tau_body = 2*G.T @ N_body + 8*G_dot.T @ body.J @ G_dot @ body.p
+            
+            #append body specific term to overall vector
+            idx = i*4
+            tau_hat[idx:idx+4] = tau_body
+        
+        return tau_hat
+        
     def solve_inverse_dynamics(self):
         
         #returns array lagrange multipliers from inverse solution
@@ -574,43 +634,8 @@ class System():
         
         offset = 3*self.num_bodies
         
-        #preallocate generalized force and torque vectors
-        F = np.zeros( (3*self.num_bodies, 1) )
-        tau_hat = np.zeros((4*self.num_bodies, 1))
-
-        #loop over each body and calculate net force and torque per body        
-        for i, body in enumerate(self.bodies):
-            
-            #set net body force and torque to zero
-            F_body = np.zeros((3,1))
-            N_body = np.zeros((3,1))
-            
-            #calculate net force on body
-            for force, loc in body.forces:
-                
-                fi = force.to_global()
-                F_body += fi
-                
-            #determine how much torque each force creates about the CG
-            #note that force is in global frame but torque vectors are in local frame
-                N_body += tilde(loc) @ body.A.T @ fi
-                
-            for torque in body.torques:
-                
-                ti = torque.to_global()
-                N_body += body.A.T @ ti #add torque in local reference frame to net torque
-                
-            #we must compute the generalized torques from the actual net torque
-            G = body.G
-            G_dot = body.G_dot
-            tau_body = 2*G.T @ N_body + 8*G_dot.T @ body.J @ G_dot @ body.p
-            
-            #append body specific term to overall vector
-            idx = i*3
-            F[idx:idx+3] = F_body
-            
-            idx = i*4
-            tau_hat[idx:idx+4] = tau_body
+        F = self.generalized_forces()
+        tau_hat = self.generalized_torques()
             
         #compute rhs
         r_ddot, p_ddot = self._get_generalized_coords(level = 2)
@@ -627,27 +652,97 @@ class System():
         self.solve_velocity()
         self.solve_acceleration()
         
+    def initialize(self):
+        
+        """Initial conditions for position and velocity must be given. This 
+        Function calculates the accelerations and lagrange multipliers for time 
+        t = 0, sets the accelerations for each of the bodies, sets the lagrange 
+        multipliers of the system for t = 0 and then takes a snapshot of the 
+        history of the system at t = 0"""
+        
+        #initialization comes from slide 16 of L15
+        nb = self.num_bodies
+        nc = self.num_constraints
+        N = 8*nb + nc
+        
+        LHS = np.zeros( (N, N) )
+        RHS = np.zeros( (N, 1) )
+        
+        #formulate LHS
+        col_offset1 = 3*nb
+        col_offset2 = col_offset1 + 4*nb
+        col_offset3 = col_offset2 + nb
+        
+        row_offset1 = 3*nb
+        row_offset2 = row_offset1 + 4*nb
+        row_offset3 = row_offset2 + nb
+        
+        #row 1
+        LHS[0:row_offset1, 0:col_offset1] = self.M()
+        LHS[0:row_offset1, col_offset3::]  = self.partial_r().T
+        
+        #row 2
+        LHS[row_offset1 : row_offset2, col_offset1 : col_offset2]  = self.J
+        LHS[row_offset1 : row_offset2, col_offset2 : col_offset3]  = self.P().T
+        LHS[row_offset1 : row_offset2, col_offset3::]  = self.partial_p().T
+
+        #row 3        
+        LHS[row_offset2 : row_offset3, col_offset1 : col_offset2]  = self.P()
+
+        #row 4
+        LHS[row_offset3:: , 0 : col_offset1]  = self.partial_r()
+        LHS[row_offset3:: , col_offset1 : col_offset2]  = self.partial_p()
+        
+        #formulate RHS
+        RHS[0:row_offset1] = self.generalized_forces()
+        RHS[row_offset1 : row_offset2] = self.generalized_torques()
+        RHS[row_offset2 : row_offset3] = self.gamma_euler()
+        RHS[row_offset3::] = self.gamma()
+        
+        sol_0 = np.linalg.solve(LHS, RHS)        
+        
+        r_ddot_0 = column(sol_0[0:row_offset1])
+        p_ddot_0 = column(sol_0[row_offset1:row_offset2])
+        
+        lagrange_euler = column(sol_0[row_offset2:row_offset3])
+        lagrange = column(sol_0[row_offset3::])
+        
+        self._set_generalized_coords(r_ddot_0, p_ddot_0, level = 2)
+
+        self.lagrange = lagrange
+        self.lagrange_euler = lagrange_euler        
+        
+        self.history_set()
+        
+    def residual(self):
+        
+        pass        
     
     def step(self):
         
-        pass
+        #initialize the problem if at the zeroeth step
+        if self.step_num == 0:
+            self.initialize()
+            
+        #step time forward one step and increment the step counter
+        self.t += self.h
+        self.step_num += 1
+
+        #set order of solver based on how much history is present
+        history_cnt = len(self.history['r'])
+        order = min(self.order, history_cnt)
+        self.solver.set_order(order)
+        
+        
+        
+        
+        
+        
+        
         
 
 def main():
     
-    h = 0.1
-    
-    pos_h = np.array([[1,2],[1,2]])
-    vel_h = pos_h*4
-    
-    bdf = Solvers.BDF_Solver(order = 2, h = h)
-    
-    print(bdf.C_vel(vel_h))
-    Cv = (4/3)*vel_h[:,1] - (1/3)*vel_h[:,0]
-    print(Cv)
-    
-    print(bdf.C_pos(pos_h, vel_h))
-    Cp = (4/3)*pos_h[:,1] - (1/3)*pos_h[:,0] + (8/9)*h*vel_h[:,1] - (2/9)*h*vel_h[:,0]
-    print(Cp)
-    
+    pass
+
 if __name__ == '__main__': main()
