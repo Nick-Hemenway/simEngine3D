@@ -7,6 +7,8 @@ import numpy as np
 import simEngine3D as sim
 import matplotlib.pyplot as plt
 
+import time as timer
+
 ############   CREATE SYSTEM   ############
 
 sys1 = sim.System()
@@ -63,10 +65,20 @@ sys1.set_step_size(h)
 sys1.initialize()
 
 r_o = [rod.r.flatten()]
-v_o = [rod.r_dot.flatten()]
+omega = [rod.omega.flatten()]
+torque = [rev.reaction_torque(body = 'j').flatten()]
+
+#velocity constraint violation
+q_dot = np.vstack( (rod.r_dot, rod.p_dot) )
+phi_q = np.hstack( (rev.partial_r()[1], rev.partial_p()[1]) )
+nu = rev.vel_rhs(sys1.t)
+
+violation = [np.linalg.norm( (phi_q @ q_dot - nu).flatten() )]
 
 t_stop = 10
 time = [0]
+
+start = timer.time()
 
 while sys1.t < t_stop:
     
@@ -74,44 +86,72 @@ while sys1.t < t_stop:
 
     #append desired results
     r_o.append(rod.r.flatten())
-    v_o.append(rod.r_dot.flatten())
+    omega.append(rod.omega.flatten())
+    torque.append(rev.reaction_torque(body = 'j').flatten())
+    
+    q_dot = np.vstack( (rod.r_dot, rod.p_dot) )
+    phi_q = np.hstack( (rev.partial_r()[1], rev.partial_p()[1]) )
+    nu = rev.vel_rhs(sys1.t)
+   
+    violation.append(np.linalg.norm( (phi_q @ q_dot - nu).flatten() ))
     
     time.append(sys1.t)
 
-t = np.array(time)
-pos = np.vstack(r_o)
-vel = np.vstack(v_o)
+#    if sys1.step_num % 20 == 0:
+#        print(sys1.t)
+        
+stop = timer.time()
 
+print(f'Total Time {stop - start}')
+        
+t = np.array(time)
+
+pos = np.vstack(r_o)
+vel = np.vstack(omega)
+T = np.vstack(torque)
 
 ############   PLOTTING   ############
 
 plt.close('all')
 
+def plot(t, y, ylabel, labels, xlabel = 'Time, t [s]'):
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    
+    ax.plot(t, y[:,0], label = labels[0])
+    ax.plot(t, y[:,1], label = labels[1])
+    ax.plot(t, y[:,2], label = labels[2])
+    
+    ax.set_xlabel(xlabel,  fontsize = 14)
+    ax.set_ylabel(ylabel, fontsize = 14)
+    
+    ax.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
+    fig.tight_layout()
+    
+    return fig, ax
+    
+    
 #plot position
+fig1, ax1 = plot(t, pos, ylabel = 'Position [m]', labels = '$x$ $y$ $z$'.split())
+fig1.savefig('Position.svg')
+
+#plot velocity
+fig2, ax2 = plot(t, vel, ylabel = 'Angular Velocity, \omega [rad/s]', \
+                 labels = '$\omega_{x}$ $\omega_{y}$ $\omega_{z}$'.split())
+fig2.savefig('Omega.svg')
+fig3, ax3 = plot(t, T, ylabel = r'Torque, $\tau$ [N-m]', \
+                 labels = '$T_{x}$ $T_{y}$ $T_{z}$'.split())
+fig3.savefig('Torque.svg')
+#plot velocity constraint violation magnitude
+
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
-ax.plot(t, pos[:,0], label = '$x$')
-ax.plot(t, pos[:,1], label = '$y$')
-ax.plot(t, pos[:,2], label = '$z$')
+ax.plot(t, violation)
 
 ax.set_xlabel('Time, t [s]',  fontsize = 14)
-ax.set_ylabel('Position [m]', fontsize = 14)
+ax.set_ylabel('Velocity Violation', fontsize = 14)
 
-ax.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
 fig.tight_layout()
-
-#plot velocity
-fig1 = plt.figure()
-ax1 = fig1.add_subplot(111)
-
-ax1.plot(t, vel[:,0], label = '$\dot{x}$')
-ax1.plot(t, vel[:,1], label = '$\dot{y}$')
-ax1.plot(t, vel[:,2], label = '$\dot{z}$')
-
-ax1.set_xlabel('Time, t [s]',  fontsize = 14)
-ax1.set_ylabel('Velocity [m/s]', fontsize = 14)
-
-ax1.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
-fig1.tight_layout()
-
+fig.savefig('Part1_Velocity_Violation.svg')

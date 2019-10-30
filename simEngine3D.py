@@ -288,6 +288,8 @@ class System():
     
     def partial_r(self):
         
+        #same as phi_r
+        
         phi_r = np.zeros((self.num_constraints, 3*self.num_bodies))
         
         row = 0
@@ -332,6 +334,7 @@ class System():
     
     def partial_p(self):
         
+        #same as phi_p
         phi_p = np.zeros((self.num_constraints, 4*self.num_bodies))
         
         row = 0
@@ -730,8 +733,7 @@ class System():
         
         self._set_generalized_coords(r_ddot_0, p_ddot_0, level = 2)
 
-        self.lagrange = lagrange
-        self.lagrange_euler = lagrange_euler        
+        self._set_lagrange_params(lagrange, lagrange_euler)
         
         self.history_set()
         

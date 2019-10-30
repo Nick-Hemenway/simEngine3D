@@ -108,7 +108,7 @@ class DerivedConstraint():
             Pi = np.atleast_2d(Pi_j)
         else:
             Pi = np.atleast_2d(Pi_i)
-        
+
         T = -Pi.T @ self.lagrange
         
         return T

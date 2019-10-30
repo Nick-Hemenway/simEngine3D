@@ -6,6 +6,7 @@ sys.path.append('..')
 import numpy as np
 import simEngine3D as sim
 import matplotlib.pyplot as plt
+import time as timer
 
 ############   CREATE SYSTEM   ############
 
@@ -75,11 +76,11 @@ rev2 = sys1.joint_revolute(body_i = rod1, sp_i_bar = [L,0,0], ai_bar = [1,0,0], 
                     bi_bar = [0,1,0], body_j = rod2, sq_j_bar = [-L2, 0, 0], cj_bar = [0,0,1])
 
 
-############   START STEPPING THROUGH TIME   ############
+############   SET UP SIMULATION PARAMETERS   ############
 
 #solver parameters
-h = 0.01
-order = 2
+h = 0.001
+order = 1
 
 #set up solver
 sys1.set_solver_order(order)
@@ -87,103 +88,106 @@ sys1.set_step_size(h)
 
 #initialize problem by solving for initial accelerations
 
-r_o1 = [rod1.r.flatten()]
-v_o1 = [rod1.r_dot.flatten()]
+r1 = [rod1.r.flatten()]
+omega1 = [rod1.omega.flatten()]
 
-r_o2 = [rod2.r.flatten()]
-v_o2 = [rod2.r_dot.flatten()]
+r2 = [rod2.r.flatten()]
+omega2 = [rod2.omega.flatten()]
+
+#velocity constraint violation
+q_dot = np.vstack( (rod1.r_dot, rod2.r_dot, rod1.p_dot, rod2.p_dot) )
+phi_q = np.hstack( (rev2.partial_r()[0], rev2.partial_r()[1], rev2.partial_p()[0], rev2.partial_p()[1]) )
+nu = rev2.vel_rhs(sys1.t)
+
+violation = [np.linalg.norm( (phi_q @ q_dot - nu).flatten() )]
+
+############   START STEPPING THROUGH TIME   ############
 
 t_stop = 10
 time = [0]
 
 sys1.initialize()
 
+start = timer.time()
+
 while sys1.t < t_stop:
     
     sys1.step(tol = 1e-3)
 
     #append desired results
-    r_o1.append(rod1.r.flatten())
-    v_o1.append(rod1.r_dot.flatten())
+    r1.append(rod1.r.flatten())
+    omega1.append(rod1.omega.flatten())
     
-    r_o2.append(rod2.r.flatten())
-    v_o2.append(rod2.r_dot.flatten())
+    r2.append(rod2.r.flatten())
+    omega2.append(rod2.omega.flatten())
+    
+    q_dot = np.vstack( (rod1.r_dot, rod2.r_dot, rod1.p_dot, rod2.p_dot) )
+    phi_q = np.hstack( (rev2.partial_r()[0], rev2.partial_r()[1], rev2.partial_p()[0], rev2.partial_p()[1]) )
+    nu = rev2.vel_rhs(sys1.t)
+    
+    violation.append( np.linalg.norm( (phi_q @ q_dot - nu).flatten() ) )
     
     time.append(sys1.t)
     
-    if sys1.step_num % 20 == 0:
-        print(sys1.t)
+#    if sys1.step_num % 20 == 0:
+#        print(sys1.t)
+
+stop = timer.time()
+
+print(f'Total Time: {stop - start}')
 
 t = np.array(time)
-pos1 = np.vstack(r_o1)
-vel1 = np.vstack(v_o1)
-pos2 = np.vstack(r_o2)
-vel2 = np.vstack(v_o2)
+
+#convert lists to numpy arrays for plotting
+r1 = np.vstack(r1)
+omega1 = np.vstack(omega1)
+r2 = np.vstack(r2)
+omega2 = np.vstack(omega2)
 
 
 ############   PLOTTING   ############
 
-plt.close('all')
+#plt.close('all')
 
-#body 1 position
+def plot(t, y, ylabel, labels, xlabel = 'Time, t [s]'):
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    
+    ax.plot(t, y[:,0], label = labels[0])
+    ax.plot(t, y[:,1], label = labels[1])
+    ax.plot(t, y[:,2], label = labels[2])
+    
+    ax.set_xlabel(xlabel,  fontsize = 14)
+    ax.set_ylabel(ylabel, fontsize = 14)
+    
+    ax.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
+    fig.tight_layout()
+    
+    return fig, ax
+
+#plot positions
+fig1, ax1 = plot(t, r1, ylabel = 'Position [m]', labels = '$x_1$ $y_1$ $z_1$'.split())
+fig1.savefig('Body1_Pos.svg')
+fig2, ax2 = plot(t, r2, ylabel = 'Position [m]', labels = '$x_2$ $y_2$ $z_2$'.split())
+fig2.savefig('Body2_Pos.svg')
+
+#plot angular velocities
+fig3, ax3 = plot(t, omega1, ylabel = 'Angular Velocity $\omega$ [rad/s]', \
+                 labels = '$\omega_{x,1}$ $\omega_{y,1}$ $\omega_{z,1}$'.split())
+fig3.savefig('Body1_Omega.svg')
+
+fig4, ax4 = plot(t, omega2, ylabel = 'Angular Velocity $\omega$ [rad/s]', \
+                 labels = '$\omega_{x,2}$ $\omega_{y,2}$ $\omega_{z,2}$'.split())
+fig4.savefig('Body2_Omega.svg')
+
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
-ax.plot(t, pos1[:,0], label = '$x_1$')
-ax.plot(t, pos1[:,1], label = '$y_1$')
-ax.plot(t, pos1[:,2], label = '$z_1$')
+ax.plot(t, violation)
 
 ax.set_xlabel('Time, t [s]',  fontsize = 14)
-ax.set_ylabel('Position [m]', fontsize = 14)
+ax.set_ylabel('Velocity Violation', fontsize = 14)
 
-ax.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
 fig.tight_layout()
-
-#body 2 position
-fig1 = plt.figure()
-ax1 = fig1.add_subplot(111)
-
-ax1.plot(t, pos2[:,0], label = '$x_2$')
-ax1.plot(t, pos2[:,1], label = '$y_2$')
-ax1.plot(t, pos2[:,2], label = '$z_2$')
-
-ax1.set_xlabel('Time, t [s]',  fontsize = 14)
-ax1.set_ylabel('Position [m]', fontsize = 14)
-
-ax1.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
-fig1.tight_layout()
-
-#body 1 velocity
-fig2 = plt.figure()
-ax2 = fig2.add_subplot(111)
-
-ax2.plot(t, vel1[:,0], label = '$\dot{x}_1$')
-ax2.plot(t, vel1[:,1], label = '$\dot{y}_1$')
-ax2.plot(t, vel1[:,2], label = '$\dot{z}_1$')
-
-ax2.set_xlabel('Time, t [s]',  fontsize = 14)
-ax2.set_ylabel('Velocity [m/s]', fontsize = 14)
-
-ax2.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
-fig2.tight_layout()
-
-#body 2 velocity
-fig3 = plt.figure()
-ax3 = fig3.add_subplot(111)
-
-ax3.plot(t, vel2[:,0], label = '$\dot{x}_2$')
-ax3.plot(t, vel2[:,1], label = '$\dot{y}_2$')
-ax3.plot(t, vel2[:,2], label = '$\dot{z}_2$')
-
-ax3.set_xlabel('Time, t [s]',  fontsize = 14)
-ax3.set_ylabel('Velocity [m/s]', fontsize = 14)
-
-ax3.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
-fig3.tight_layout()
-
-fig4 = plt.figure()
-ax4 = fig4.add_subplot(111)
-
-#theta = np.
-#ax4.plot(t, L_mag)
-
+fig.savefig('Velocity_Violation.svg')
