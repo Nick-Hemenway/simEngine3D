@@ -73,11 +73,13 @@ rev1 = sys1.joint_revolute(body_i = sys1.global_frame, sp_i_bar = [0,0,0], ai_ba
 rev2 = sys1.joint_revolute(body_i = rod1, sp_i_bar = [L,0,0], ai_bar = [1,0,0], \
                     bi_bar = [0,1,0], body_j = rod2, sq_j_bar = [-L2, 0, 0], cj_bar = [0,0,1])
 
+sys1.initialize()
+
 ############   START STEPPING THROUGH TIME   ############
 
 #solver parameters
-h = 0.001
-order = 1
+h = 0.01
+order = 2
 
 #set up solver
 sys1.set_solver_order(order)
@@ -107,6 +109,9 @@ while sys1.t < t_stop:
     v_o2.append(rod2.r_dot.flatten())
     
     time.append(sys1.t)
+    
+    if sys1.step_num % 20 == 0:
+        print(sys1.t)
 
 t = np.array(time)
 pos1 = np.vstack(r_o1)
@@ -174,4 +179,10 @@ ax3.set_ylabel('Velocity [m/s]', fontsize = 14)
 
 ax3.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
 fig3.tight_layout()
+
+fig4 = plt.figure()
+ax4 = fig4.add_subplot(111)
+
+#theta = np.
+#ax4.plot(t, L_mag)
 

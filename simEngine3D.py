@@ -46,6 +46,7 @@ class System():
         
     def set_solver_order(self, order):
         
+        self.order = order
         self.solver.set_order(order)
         
     def set_step_size(self, h):
@@ -840,6 +841,7 @@ class System():
         
         max_iter = 30
         iter_count = 0
+#        psi = self.sensitivity()
         
         while delta_mag > tol and iter_count < max_iter:
         
