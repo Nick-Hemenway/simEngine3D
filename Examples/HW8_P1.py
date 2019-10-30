@@ -63,6 +63,7 @@ sys1.set_step_size(h)
 sys1.initialize()
 
 r_o = [rod.r.flatten()]
+v_o = [rod.r_dot.flatten()]
 
 t_stop = 10
 time = [0]
@@ -73,30 +74,44 @@ while sys1.t < t_stop:
 
     #append desired results
     r_o.append(rod.r.flatten())
-    if sys1.step_num % 20 == 0:
-        print(sys1.t)
+    v_o.append(rod.r_dot.flatten())
+    
     time.append(sys1.t)
 
 t = np.array(time)
 pos = np.vstack(r_o)
+vel = np.vstack(v_o)
 
 
 ############   PLOTTING   ############
 
 plt.close('all')
 
+#plot position
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
-ax.plot(t, pos[:,0], label = 'X-Position')
-ax.plot(t, pos[:,1], label = 'Y-Position')
-ax.plot(t, pos[:,2], label = 'Z-Position')
+ax.plot(t, pos[:,0], label = '$x$')
+ax.plot(t, pos[:,1], label = '$y$')
+ax.plot(t, pos[:,2], label = '$z$')
 
 ax.set_xlabel('Time, t [s]',  fontsize = 14)
 ax.set_ylabel('Position [m]', fontsize = 14)
 
-ax.legend()
+ax.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
 fig.tight_layout()
 
+#plot velocity
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(111)
 
+ax1.plot(t, vel[:,0], label = '$\dot{x}$')
+ax1.plot(t, vel[:,1], label = '$\dot{y}$')
+ax1.plot(t, vel[:,2], label = '$\dot{z}$')
+
+ax1.set_xlabel('Time, t [s]',  fontsize = 14)
+ax1.set_ylabel('Velocity [m/s]', fontsize = 14)
+
+ax1.legend(bbox_to_anchor = (0.0, 1.05, 1, 0.1), loc = 'center', ncol = 3)
+fig1.tight_layout()
 
