@@ -65,6 +65,8 @@ class Gcon():
             self.func = constraint_func
             
         self.DOF_constrained = 1 #all primitive constraints constrain 1 DOF
+        
+        self.lagrange = None
     
     def B(self, p, a_bar):
         """Returns 3x4 matrix that is created by the B operator.
@@ -93,7 +95,6 @@ class Gcon():
         dij = rq - rp
         
         return dij
-        
     
 class GconDP1(Gcon):
     
@@ -161,6 +162,43 @@ class GconDP1(Gcon):
         dphi_drj = np.zeros(3)
         
         return dphi_dri, dphi_drj
+    
+    def pi(self):
+        
+        dphi_dpi, dphi_dpj = self.partial_p()
+        
+        pi_i = 0.5*dphi_dpi @ self.body_i.E.T
+        pi_j = 0.5*dphi_dpj @ self.body_j.E.T
+        
+        return pi_i, pi_j
+    
+    def reaction_force(self, body = 'i'):
+        
+        #note that reaction forces act at center of gravity, not joint
+        phi_ri, phi_rj = self.partial_r()
+        
+        if body.lower() == 'j':
+            partial = np.atleast_2d(phi_rj)
+        else:
+            partial = np.atleast_2d(phi_ri)
+            
+        F = -partial.T @ self.lagrange
+        
+        return F
+    
+    def reaction_torque(self, body = 'i'):
+        
+        #note that reaction torques act at center of gravity, not joint
+        Pi_i, Pi_j = self.pi()
+        
+        if body.lower() == 'j':
+            Pi = np.atleast_2d(Pi_j)
+        else:
+            Pi = np.atleast_2d(Pi_i)
+            
+        T = -Pi.T @ self.lagrange
+        
+        return T
         
     
 class GconDP2(Gcon):
@@ -242,6 +280,43 @@ class GconDP2(Gcon):
         dphi_drj =  ai.T
         
         return dphi_dri.flatten(), dphi_drj.flatten()
+    
+    def pi(self):
+        
+        dphi_dpi, dphi_dpj = self.partial_p()
+        
+        pi_i = 0.5*dphi_dpi @ self.body_i.E.T
+        pi_j = 0.5*dphi_dpj @ self.body_j.E.T
+        
+        return pi_i, pi_j
+    
+    def reaction_force(self, body = 'i'):
+        
+        #note that reaction forces act at center of gravity, not joint
+        phi_ri, phi_rj = self.partial_r()
+        
+        if body.lower() == 'j':
+            partial = np.atleast_2d(phi_rj)
+        else:
+            partial = np.atleast_2d(phi_ri)
+            
+        F = -partial.T @ self.lagrange
+        
+        return F
+    
+    def reaction_torque(self, body = 'i'):
+        
+        #note that reaction torques act at center of gravity, not joint
+        Pi_i, Pi_j = self.pi()
+        
+        if body.lower() == 'j':
+            Pi = np.atleast_2d(Pi_j)
+        else:
+            Pi = np.atleast_2d(Pi_i)
+            
+        T = -Pi.T @ self.lagrange
+        
+        return T
         
         
 class GconD(Gcon):
@@ -312,6 +387,43 @@ class GconD(Gcon):
         dphi_drj =  2*dij.T
         
         return dphi_dri.flatten(), dphi_drj.flatten()
+    
+    def pi(self):
+        
+        dphi_dpi, dphi_dpj = self.partial_p()
+        
+        pi_i = 0.5*dphi_dpi @ self.body_i.E.T
+        pi_j = 0.5*dphi_dpj @ self.body_j.E.T
+        
+        return pi_i, pi_j
+    
+    def reaction_force(self, body = 'i'):
+        
+        #note that reaction forces act at center of gravity, not joint
+        phi_ri, phi_rj = self.partial_r()
+        
+        if body.lower() == 'j':
+            partial = np.atleast_2d(phi_rj)
+        else:
+            partial = np.atleast_2d(phi_ri)
+            
+        F = -partial.T @ self.lagrange
+        
+        return F
+    
+    def reaction_torque(self, body = 'i'):
+        
+        #note that reaction torques act at center of gravity, not joint
+        Pi_i, Pi_j = self.pi()
+        
+        if body.lower() == 'j':
+            Pi = np.atleast_2d(Pi_j)
+        else:
+            Pi = np.atleast_2d(Pi_i)
+            
+        T = -Pi.T @ self.lagrange
+        
+        return T
 
 class GconCD(Gcon):
     
@@ -366,6 +478,41 @@ class GconCD(Gcon):
         dphi_drj =  self.c_vec.T
         
         return dphi_dri.flatten(), dphi_drj.flatten()
+    
+    def pi(self):
         
+        dphi_dpi, dphi_dpj = self.partial_p()
         
-
+        pi_i = 0.5*dphi_dpi @ self.body_i.E.T
+        pi_j = 0.5*dphi_dpj @ self.body_j.E.T
+        
+        return pi_i, pi_j
+    
+    def reaction_force(self, body = 'i'):
+        
+        #note that reaction forces act at center of gravity, not joint
+        phi_ri, phi_rj = self.partial_r()
+        
+        if body.lower() == 'j':
+            partial = np.atleast_2d(phi_rj)
+        else:
+            partial = np.atleast_2d(phi_ri)
+            
+        F = -partial.T @ self.lagrange
+        
+        return F
+    
+    def reaction_torque(self, body = 'i'):
+        
+        #note that reaction torques act at center of gravity, not joint
+        Pi_i, Pi_j = self.pi()
+        
+        if body.lower() == 'j':
+            Pi = np.atleast_2d(Pi_j)
+        else:
+            Pi = np.atleast_2d(Pi_i)
+            
+        T = -Pi.T @ self.lagrange
+        
+        return T
+        

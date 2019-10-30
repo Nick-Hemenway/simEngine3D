@@ -96,17 +96,11 @@ for i, t in enumerate(time):
     sys1.solve_kinematics(tol = 1e-6, update_jacobian_every = 3)
     
     #solve inverse dynamics for time step for lagrange multipliers
-    lam = sys1.solve_inverse_dynamics()
+    sys1.solve_inverse_dynamics()
     
     #solve for joint reaction forces
-    phi_ri, phi_rj = rev.partial_r()
-    F = -phi_rj.T @ lam[0:5]
-    
-    #solve for generalized driving torque
-    phi_pi, phi_pj = driving_con.partial_p()
-    E = rod.E
-    
-    T = -0.5*phi_pj @ E.T *lam[5] #slide 16 of lecture 9 for going from phi to pi
+    F = rev.reaction_force(body = 'j')
+    T = driving_con.reaction_torque(body = 'j')
     
     #append reaction forces/torques to array
     Torque[i,:] = T.flatten()

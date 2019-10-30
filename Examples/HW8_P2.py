@@ -64,6 +64,7 @@ rod2 = sys1.add_body(m = m2, J = J2) #create rod body
 rod2.set_orientation_from_A(A_down) #set initial orientation of rod to be straight down
 rod2.set_position(r = [0, 2*L, -L2])
 
+############   REVOLUTE JOINTS   ############
 
 #add a revolute joint between the pendulum rod and ground
 rev1 = sys1.joint_revolute(body_i = sys1.global_frame, sp_i_bar = [0,0,0], ai_bar = [0,1,0], \
@@ -73,7 +74,6 @@ rev1 = sys1.joint_revolute(body_i = sys1.global_frame, sp_i_bar = [0,0,0], ai_ba
 rev2 = sys1.joint_revolute(body_i = rod1, sp_i_bar = [L,0,0], ai_bar = [1,0,0], \
                     bi_bar = [0,1,0], body_j = rod2, sq_j_bar = [-L2, 0, 0], cj_bar = [0,0,1])
 
-sys1.initialize()
 
 ############   START STEPPING THROUGH TIME   ############
 
@@ -86,7 +86,6 @@ sys1.set_solver_order(order)
 sys1.set_step_size(h)
 
 #initialize problem by solving for initial accelerations
-sys1.initialize()
 
 r_o1 = [rod1.r.flatten()]
 v_o1 = [rod1.r_dot.flatten()]
@@ -96,6 +95,8 @@ v_o2 = [rod2.r_dot.flatten()]
 
 t_stop = 10
 time = [0]
+
+sys1.initialize()
 
 while sys1.t < t_stop:
     

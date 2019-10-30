@@ -501,6 +501,19 @@ class System():
             getattr(body, orient)(p[idx:idx+4])
             
             
+    def _set_lagrange_params(self, lagrange, lagrange_euler):
+        
+        self.lagrange = lagrange
+        self.lagrange_euler = lagrange_euler
+        
+        idx = 0
+        
+        for constraint in self.constraints:
+            
+            dof = constraint.DOF_constrained
+            constraint.lagrange = column(lagrange[idx:idx+dof])
+            idx += dof
+            
     def solve_position(self, tol = 1e-9, update_jacobian_every = 1):
         
         delta_mag = 2*tol #initial mag is twice tolerance to ensure loop starts
@@ -645,10 +658,13 @@ class System():
         rhs[0:offset] = F - self.M() @ r_ddot
         rhs[offset::] = tau_hat - self.J() @ p_ddot
         
-        lagrange = np.linalg.solve(lhs, rhs)
+        lam = np.linalg.solve(lhs, rhs)
         
-        return lagrange
-    
+        lagrange = lam[0:6*self.num_bodies]
+        lagrange_euler = lam[6*self.num_bodies::]
+        
+        self._set_lagrange_params(lagrange, lagrange_euler)
+        
     def solve_kinematics(self, tol = 1e-9, update_jacobian_every = 1):
         
         self.solve_position(tol, update_jacobian_every)
@@ -911,10 +927,10 @@ class System():
             self.history_delete_oldest()
         
         #set system lagrange parameters
-        self.lagrange_euler = sol[offset2 : offset3]
-        self.lagrange = sol[offset3::]
+        lagrange_euler = sol[offset2 : offset3]
+        lagrange = sol[offset3::]
         
-        
+        self._set_lagrange_params(lagrange, lagrange_euler)
         
         
 
