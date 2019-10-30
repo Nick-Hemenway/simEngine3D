@@ -13,7 +13,7 @@ from utility import column, tilde
 
 class System():
     
-    def __init__(self, h = 0.01, order = 1, solver = Solvers.BDF_Solver):
+    def __init__(self, h = 0.01, order = 2, solver = Solvers.BDF_Solver):
     
         self.num_bodies = 0
     
@@ -42,6 +42,7 @@ class System():
         self.history = {'r':[], 'p':[], 'r_dot':[], 'p_dot':[], 'r_ddot':[], 'p_ddot':[]}
         
         self.solver = solver(h = h, order = order)
+        self.is_initialized = False
         
     def set_solver_order(self, order):
         
@@ -244,7 +245,8 @@ class System():
         for i, body in enumerate(self.bodies):
             
             p = body.p
-            phi_vec_euler[i] = p.T @ p - 1.0
+            phi_vec_euler[i] = 0.5*p.T @ p - 0.5
+#            phi_vec_euler[i] = p.T @ p - 1.0
 
         return phi_vec_euler        
     
@@ -660,6 +662,8 @@ class System():
         multipliers of the system for t = 0 and then takes a snapshot of the 
         history of the system at t = 0"""
         
+        self.is_initialized = True
+        
         #initialization comes from slide 16 of L15
         nb = self.num_bodies
         nc = self.num_constraints
@@ -682,7 +686,7 @@ class System():
         LHS[0:row_offset1, col_offset3::]  = self.partial_r().T
         
         #row 2
-        LHS[row_offset1 : row_offset2, col_offset1 : col_offset2]  = self.J
+        LHS[row_offset1 : row_offset2, col_offset1 : col_offset2]  = self.J()
         LHS[row_offset1 : row_offset2, col_offset2 : col_offset3]  = self.P().T
         LHS[row_offset1 : row_offset2, col_offset3::]  = self.partial_p().T
 
@@ -762,15 +766,15 @@ class System():
         #row 1
         psi[0:row_offset1, col_offset3::]  = self.partial_r().T
         
-#        psi[0:row_offset1, 0:col_offset1]  = psi_11
-#        psi[0:row_offset1, col_offset1:col_offset2]  = psi_12
+        psi[0:row_offset1, 0:col_offset1]  = self.M() # ~psi_11
+        psi[0:row_offset1, col_offset1:col_offset2]  = 0 # ~psi_12
         
         #row 2
         psi[row_offset1 : row_offset2, col_offset2 : col_offset3]  = self.P().T
         psi[row_offset1 : row_offset2, col_offset3::]  = self.partial_p().T
 
-#        psi[row_offset1 : row_offset2, 0:col_offset1]  = psi_21
-#        psi[row_offset1 : row_offset2, col_offset1:col_offset2]  = psi_22
+        psi[row_offset1 : row_offset2, 0:col_offset1]  = 0 # ~psi_21
+        psi[row_offset1 : row_offset2, col_offset1:col_offset2]  = self.J() # ~psi_22
         
         #row 3        
         psi[row_offset2 : row_offset3, col_offset1 : col_offset2]  = self.P()
@@ -778,6 +782,8 @@ class System():
         #row 4
         psi[row_offset3:: , 0 : col_offset1]  = self.partial_r()
         psi[row_offset3:: , col_offset1 : col_offset2]  = self.partial_p()
+        
+        return psi
         
     
     def _get_history_array(self, key, order):
@@ -787,50 +793,55 @@ class System():
         
         return arr                
     
-    def step(self, tol = 1e-4):
+    def step(self, tol = 1e-3):
        
         nb = self.num_bodies
         nc = self.num_constraints
         delta_mag = 2*tol
         
         #STEP 0: PRIME NEW STEP
-        #initialize the problem if at the zeroeth step
-        if self.step_num == 0:
+        #initialize the problem if it has not been already
+        if not self.is_initialized:
             self.initialize()
             
         #step time forward one step and increment the step counter
         self.t += self.h
         self.step_num += 1
-
+        
         #set order of solver based on how much history is present
         history_cnt = len(self.history['r'])
         order = min(self.order, history_cnt)
         self.solver.set_order(order)
         
         #grab history 
-        r_h = self._get_history_array(key = 'r', order)
-        p_h = self._get_history_array(key = 'p', order)
+        r_h = self._get_history_array(key = 'r', order = order)
+        p_h = self._get_history_array(key = 'p', order = order)
         
-        r_dot_h = self._get_history_array(key = 'r_dot', order)
-        p_dot_h = self._get_history_array(key = 'p_dot', order)
+        r_dot_h = self._get_history_array(key = 'r_dot', order = order)
+        p_dot_h = self._get_history_array(key = 'p_dot', order = order)
+        
+        r_ddot, p_ddot = self._get_generalized_coords(level = 2)
+
+#        print(r_h)
+#        print(p_h)
+#        print(r_dot_h)
+#        print(p_dot_h)
         
         sol = np.zeros( (8*nb + nc, 1) )
         
         offset1 = 3*nb
         offset2 = offset1 + 4*nb
         offset3 = offset2 + nb
-        
-        #set lagrange parameters in solution vector at beginning. We don't need
-        #need to extact them again until the solution is solved
-        sol[offset2 : offset3] = self.lagrange_euler
-        sol[offset3::] = self.lagrange
 
-        r_ddot, p_ddot = self._get_generalized_coords(level = 2)
-        
         sol[0:offset1] = r_ddot
         sol[offset1:offset2] = p_ddot
+        sol[offset2 : offset3] = self.lagrange_euler
+        sol[offset3::] = self.lagrange
         
-        while delta_mag > tol:
+        max_iter = 30
+        iter_count = 0
+        
+        while delta_mag > tol and iter_count < max_iter:
         
             #STEP 1: COMPUTE POS AND VEL USING MOST RECENT ACCELERATIONS
     
@@ -850,9 +861,10 @@ class System():
             
             gn = self.residual()
             
+            
             #STEP 3: SOLVE LINEAR SYSTEM FOR CORRECTION
             
-            psi = self.sensitity()
+            psi = self.sensitivity()
             delta = np.linalg.solve(psi, -gn)
             
             #STEP 4: IMPROVE APPROXIMATE SOLUTION
@@ -870,7 +882,12 @@ class System():
             #STEP 5: CHECK STOPPING CRITERION. IF SMALL ENOUGH STEP IS DONE
         
             delta_mag = np.linalg.norm(delta)
-    
+            
+#            if iter_count < 5:
+#                print(delta_mag)
+            
+            iter_count += 1
+        
         #use last acceleration data to set position and velocity level coordinates
         #step level 0 quantities
         r_n = self.solver.pos_step(accel = r_ddot, pos_history = r_h, vel_history = r_dot_h)        
