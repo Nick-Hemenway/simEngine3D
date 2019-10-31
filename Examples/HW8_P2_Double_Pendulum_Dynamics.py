@@ -168,18 +168,14 @@ def plot(t, y, ylabel, labels, xlabel = 'Time, t [s]'):
 
 #plot positions
 fig1, ax1 = plot(t, r1, ylabel = 'Position [m]', labels = '$x_1$ $y_1$ $z_1$'.split())
-fig1.savefig('Body1_Pos.svg')
 fig2, ax2 = plot(t, r2, ylabel = 'Position [m]', labels = '$x_2$ $y_2$ $z_2$'.split())
-fig2.savefig('Body2_Pos.svg')
 
 #plot angular velocities
 fig3, ax3 = plot(t, omega1, ylabel = 'Angular Velocity $\omega$ [rad/s]', \
                  labels = '$\omega_{x,1}$ $\omega_{y,1}$ $\omega_{z,1}$'.split())
-fig3.savefig('Body1_Omega.svg')
 
 fig4, ax4 = plot(t, omega2, ylabel = 'Angular Velocity $\omega$ [rad/s]', \
                  labels = '$\omega_{x,2}$ $\omega_{y,2}$ $\omega_{z,2}$'.split())
-fig4.savefig('Body2_Omega.svg')
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -190,4 +186,11 @@ ax.set_xlabel('Time, t [s]',  fontsize = 14)
 ax.set_ylabel('Velocity Violation', fontsize = 14)
 
 fig.tight_layout()
-fig.savefig('Velocity_Violation.svg')
+
+save_figs = False
+if save_figs:
+    fig.savefig('Velocity_Violation.svg')
+    fig1.savefig('Body1_Pos.svg')
+    fig2.savefig('Body2_Pos.svg')
+    fig3.savefig('Body1_Omega.svg')
+    fig4.savefig('Body2_Omega.svg')

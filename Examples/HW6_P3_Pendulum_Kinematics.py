@@ -131,16 +131,17 @@ fig1 = make_plot(time, r_o, level = 0)
 fig2 = make_plot(time, r_o_dot, level = 1)
 fig3 = make_plot(time, r_o_ddot, level = 2)
 
-fig1.savefig('Position_O.svg')
-fig2.savefig('Velocity_O.svg')
-fig3.savefig('Acceleration_O.svg')
-    
 #plots for point q
 fig4 = make_plot(time, r_q, level = 0)
 fig5 = make_plot(time, r_q_dot, level = 1)
 fig6 = make_plot(time, r_q_ddot, level = 2)
 
-fig4.savefig('Position_Q.svg')
-fig5.savefig('Velocity_Q.svg')
-fig6.savefig('Acceleration_Q.svg')
+save_figs = False
+if save_figs:
+    fig1.savefig('Position_O.svg')
+    fig2.savefig('Velocity_O.svg')
+    fig3.savefig('Acceleration_O.svg')
+    fig4.savefig('Position_Q.svg')
+    fig5.savefig('Velocity_Q.svg')
+    fig6.savefig('Acceleration_Q.svg')
 

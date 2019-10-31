@@ -134,15 +134,12 @@ def plot(t, y, ylabel, labels, xlabel = 'Time, t [s]'):
     
 #plot position
 fig1, ax1 = plot(t, pos, ylabel = 'Position [m]', labels = '$x$ $y$ $z$'.split())
-fig1.savefig('Position.svg')
 
 #plot velocity
 fig2, ax2 = plot(t, vel, ylabel = 'Angular Velocity, \omega [rad/s]', \
                  labels = '$\omega_{x}$ $\omega_{y}$ $\omega_{z}$'.split())
-fig2.savefig('Omega.svg')
 fig3, ax3 = plot(t, T, ylabel = r'Torque, $\tau$ [N-m]', \
                  labels = '$T_{x}$ $T_{y}$ $T_{z}$'.split())
-fig3.savefig('Torque.svg')
 #plot velocity constraint violation magnitude
 
 fig = plt.figure()
@@ -154,4 +151,10 @@ ax.set_xlabel('Time, t [s]',  fontsize = 14)
 ax.set_ylabel('Velocity Violation', fontsize = 14)
 
 fig.tight_layout()
-fig.savefig('Part1_Velocity_Violation.svg')
+
+save_figs = False
+if save_figs:
+    fig1.savefig('Position.svg')
+    fig2.savefig('Omega.svg')
+    fig3.savefig('Torque.svg')
+    fig.savefig('Part1_Velocity_Violation.svg')

@@ -246,7 +246,8 @@ class System():
         for i, body in enumerate(self.bodies):
             
             p = body.p
-            phi_vec_euler[i] = 0.5*p.T @ p - 0.5
+            phi_vec_euler[i] = 0.5*p.T @ p - 0.5 #defined this way because of way
+                                                 #we define Psi later
 #            phi_vec_euler[i] = p.T @ p - 1.0
 
         return phi_vec_euler        
@@ -392,7 +393,9 @@ class System():
         for i, body in enumerate(self.bodies):
             
             idx = i*4 + offset
-            J[row, idx:idx+4] = 2*body.p.flatten()
+#            J[row, idx:idx+4] = 2*body.p.flatten()
+            J[row, idx:idx+4] = body.p.flatten() #defined this way because of defining
+                                                 #phi^p as 0.5p^T p - 0.5 = 0 
             row += 1
             
         return J
@@ -451,7 +454,9 @@ class System():
         for i, body in enumerate(self.bodies):
             
             p_dot = body.p_dot
-            gamma_arr_euler[i] = -2*p_dot.T @ p_dot
+#            gamma_arr_euler[i] = -2*p_dot.T @ p_dot
+            gamma_arr_euler[i] = -p_dot.T @ p_dot #defined this way because we defined
+            #phi^p as 0.5p^T p - 0.5 = 0 
 
         return gamma_arr_euler
     

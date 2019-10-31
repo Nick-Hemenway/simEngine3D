@@ -163,18 +163,10 @@ fig1 = make_plot(time, r_o, level = 0)
 fig2 = make_plot(time, r_o_dot, level = 1)
 fig3 = make_plot(time, r_o_ddot, level = 2)
 
-fig1.savefig('Plots/Position_O.svg')
-fig2.savefig('Plots/Velocity_O.svg')
-fig3.savefig('Plots/Acceleration_O.svg')
-    
 #plots for point q
 fig4 = make_plot(time, r_q, level = 0)
 fig5 = make_plot(time, r_q_dot, level = 1)
 fig6 = make_plot(time, r_q_ddot, level = 2)
-
-fig4.savefig('Plots/Position_Q.svg')
-fig5.savefig('Plots/Velocity_Q.svg')
-fig6.savefig('Plots/Acceleration_Q.svg')
 
 fig7 = plt.figure()
 ax7 = fig7.add_subplot(111)
@@ -183,8 +175,6 @@ ax7.set_ylabel(r'Torque, $\tau$ [Nm]', fontsize = 14)
 
 ax7.plot(time, Torque[:,0])
 fig7.tight_layout()
-fig7.savefig('Plots/Driving_Torque.svg')
-fig7.savefig('Plots/Driving_Torque.png')
 
 fig8 = plt.figure()
 ax8 = fig8.add_subplot(111)
@@ -195,6 +185,16 @@ ax8.plot(time, Force_reaction[:,1], label = '$F_y$')
 ax8.plot(time, Force_reaction[:,2], label = '$F_z$')
 ax8.legend(fontsize = 12)
 fig8.tight_layout()
-fig8.savefig('Plots/Reaction_Forces.svg')
-fig8.savefig('Plots/Reaction_Forces.png')
 
+save_figs = False
+if save_figs:
+    fig1.savefig('Plots/Position_O.svg')
+    fig2.savefig('Plots/Velocity_O.svg')
+    fig3.savefig('Plots/Acceleration_O.svg')
+    fig4.savefig('Plots/Position_Q.svg')
+    fig5.savefig('Plots/Velocity_Q.svg')
+    fig6.savefig('Plots/Acceleration_Q.svg')
+    fig7.savefig('Plots/Driving_Torque.svg')
+    fig7.savefig('Plots/Driving_Torque.png')
+    fig8.savefig('Plots/Reaction_Forces.svg')
+    fig8.savefig('Plots/Reaction_Forces.png')
