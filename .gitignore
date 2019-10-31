@@ -1,1 +1,6 @@
 __pycache__/
+*.svg
+*.png
+*.txt
+/Plots
+
