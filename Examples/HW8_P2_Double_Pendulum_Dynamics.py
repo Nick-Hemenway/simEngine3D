@@ -79,7 +79,7 @@ rev2 = sys1.joint_revolute(body_i = rod1, sp_i_bar = [L,0,0], ai_bar = [1,0,0], 
 ############   SET UP SIMULATION PARAMETERS   ############
 
 #solver parameters
-h = 0.001
+h = 0.0001
 order = 1
 
 #set up solver
