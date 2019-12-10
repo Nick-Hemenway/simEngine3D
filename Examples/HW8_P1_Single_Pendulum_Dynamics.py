@@ -54,7 +54,7 @@ rev = sys1.joint_revolute(body_i = sys1.global_frame, sp_i_bar = [0,0,0], ai_bar
 ############   START STEPPING THROUGH TIME   ############
 
 #solver parameters
-h = 0.01
+h = 0.05
 order = 2
 
 #set up solver
@@ -67,6 +67,7 @@ sys1.initialize()
 r_o = [rod.r.flatten()]
 omega = [rod.omega.flatten()]
 torque = [rev.reaction_torque(body = 'j').flatten()]
+T_pin = [rev.reaction(body = 'j')[0].flatten()]
 
 #velocity constraint violation
 q_dot = np.vstack( (rod.r_dot, rod.p_dot) )
@@ -88,6 +89,7 @@ while sys1.t < t_stop:
     r_o.append(rod.r.flatten())
     omega.append(rod.omega.flatten())
     torque.append(rev.reaction_torque(body = 'j').flatten())
+    T_pin.append(rev.reaction(body = 'j')[0].flatten())
     
     q_dot = np.vstack( (rod.r_dot, rod.p_dot) )
     phi_q = np.hstack( (rev.partial_r()[1], rev.partial_p()[1]) )
@@ -97,8 +99,8 @@ while sys1.t < t_stop:
     
     time.append(sys1.t)
 
-#    if sys1.step_num % 20 == 0:
-#        print(sys1.t)
+    if sys1.step_num % 20 == 0:
+        print(sys1.t)
         
 stop = timer.time()
 
@@ -109,6 +111,7 @@ t = np.array(time)
 pos = np.vstack(r_o)
 vel = np.vstack(omega)
 T = np.vstack(torque)
+T_pin = np.vstack(T_pin)
 
 ############   PLOTTING   ############
 
@@ -140,6 +143,10 @@ fig2, ax2 = plot(t, vel, ylabel = 'Angular Velocity, \omega [rad/s]', \
                  labels = '$\omega_{x}$ $\omega_{y}$ $\omega_{z}$'.split())
 fig3, ax3 = plot(t, T, ylabel = r'Torque, $\tau$ [N-m]', \
                  labels = '$T_{x}$ $T_{y}$ $T_{z}$'.split())
+    
+fig4, ax4 = plot(t, T_pin, ylabel = r'Pin Torque, $\tau$ [N-m]', \
+                 labels = '$T_{x}$ $T_{y}$ $T_{z}$'.split())
+    
 #plot velocity constraint violation magnitude
 
 fig = plt.figure()
