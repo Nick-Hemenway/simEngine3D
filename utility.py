@@ -53,6 +53,10 @@ def A_to_p(A):
 
     return p
 
+def normalize(vec):
+    
+    return vec/np.linalg.norm(vec)
+
 
 def main():
     
