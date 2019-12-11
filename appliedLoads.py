@@ -110,20 +110,74 @@ class RSDA():
         self.theta_0 = theta_0
         self.c = c
         self.h = h
-    
-    def _calc_theta(self):
         
-        
+        #need to implement logic for revolutions greater than one
+        self.n = 0 #number of full revolutions
     
+    def _calc_theta_ij(self):
+        
+        #convert needed vectors to global frame
+        bi = self.body_i.A @ self.bi_bar
+        bj = self.body_j.A @ self.bj_bar
+        ai = self.body_i.A @ self.ai_bar
+        
+        #flatten arrays to be used with numpys dot and cross functions
+        bi = bi.flatten()
+        bj = bj.flatten()
+        ai = ai.flatten()
+
+        #see pages 327 - 329 of Haugs book for explanation        
+        gi = np.cross(ai, bi)
+        
+        c = bi @ bj
+        s = gi @ bj
+        
+        arc = np.arcsin(s)
+        
+        if (s>=0) and (c>=0):
+            theta = arc
+        elif (s>=0) and (c<0):
+            theta = np.pi - arc
+        elif (s<0) and (c<0):
+            theta = np.pi - arc
+        else:
+            theta = 2*np.pi + arc
+        
+        return theta + 2*self.n*np.pi
+    
+    def _calc_theta_ij_dot(self):
+        
+        #see eq. 9.2.62 on page 335 of Haug
+        Ai = self.body_i.A
+        Aj = self.body_j.A
+        
+        omega_i_bar = self.body_i.omega_bar
+        omega_j_bar = self.body_j.omega_bar
+        
+        theta_dot = self.ai_bar.T @ (Ai.T @ Aj @ omega_j_bar - omega_i_bar)
+        theta_dot = theta_dot.item() #extract scalar from np array
+        
+        return theta_dot
+        
     def __call__(self, t):
         
-        pass
+        theta_ij = self.calc_theta_ij()
+        theta_ij_dot = self.calc_theta_ij_dot()
+        
+        T_mag = (self.k*(theta_ij - self.theta_0) + self.c*theta_ij_dot
+                 + self.h(theta_ij, theta_ij_dot, t))
     
-    
-    
-    
-    
-    
+        #Note that this function calculates the torques in the global frame first
+        #and then converts them to each of the local frames
+        
+        ai = self.body_i.A @ self.ai_bar
+        Ti = T_mag*ai
+        Tj = -Ti
+        
+        Ti_bar = self.body_i.A.T @ Ti
+        Tj_bar = self.body_j.A.T @ Tj
+        
+        return Ti_bar, Tj_bar
     
     
     
