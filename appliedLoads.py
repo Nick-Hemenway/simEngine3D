@@ -111,7 +111,7 @@ class RSDA():
         self.c = c
         self.h = h
         
-        #need to implement logic for revolutions greater than one
+        self.theta_old = 0
         self.n = 0 #number of full revolutions
     
     def _calc_theta_ij(self):
@@ -142,6 +142,19 @@ class RSDA():
             theta = np.pi - arc
         else:
             theta = 2*np.pi + arc
+            
+        diff = theta - self.theta_old
+        self.theta_old = theta
+        
+        #increment revolution counter depending on which way the zero degree 
+        #line is crossed
+        if diff < -0.9*2*np.pi:
+            self.n += 1
+        if diff > 0.9*2*np.pi:
+            self.n -= 1
+            
+        #NOTE: The revolution counter feature works, but the initial angle at 
+        #the beginning of the simulation must be positive (theta_init >= 0)
         
         return theta + 2*self.n*np.pi
     
@@ -179,24 +192,17 @@ class RSDA():
         
         return Ti_bar, Tj_bar
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
+
+
+
+
+
     
     
