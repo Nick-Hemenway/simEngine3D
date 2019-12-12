@@ -7,8 +7,10 @@ sys.path.append(str(Gcon_folder))
 import numpy as np
 import rigidbody
 import Solvers
+import appliedLoads as loads
 from Gcons import GconPrimitives, GconIntermediate, GconDerived
-from utility import column, tilde
+import utility
+from utility import column, tilde#, rotate_x, rotate_y, rotate_z
 
 
 class System():
@@ -43,6 +45,20 @@ class System():
         
         self.solver = solver(h = h, order = order)
         self.is_initialized = False
+        
+        #lists to store system level forces and torques (e.g. TSDA, RSDA, etc.)
+        self.sys_forces = []
+        self.sys_torques = []
+        
+    def print_time(self, num_steps = 20):
+        
+        if self.step_num % num_steps == 0:
+            print(self.t)
+        
+    def set_gravity(self, vec):
+        
+        #vec is an array-like
+        self.gravity = self.global_frame.vector(vec)
         
     def set_solver_order(self, order):
         
@@ -86,7 +102,8 @@ class System():
         self.num_bodies += 1
         
         new_body = rigidbody.RigidBody(m = m, J = J, r = r, p = p, r_dot = r_dot, p_dot = p_dot, r_ddot = r_ddot, p_ddot = p_ddot, idx = self.num_bodies, name = name)
-        new_body.add_force( force_vec = m*self.gravity, location = [0,0,0] ) #add gravity vector to body
+        Fg = loads.const_force( m*self.gravity, loc = [0,0,0] ) #returns force object for gravity
+        new_body.add_force(force = Fg) #add gravity vector to body
         
         self.bodies.append(new_body)
         
@@ -221,6 +238,57 @@ class System():
         self.constraints.append(con)
         
         return self.constraints[self.num_joints - 1]
+    
+    ######################   LOADS   ######################
+    
+    def force_constant(self, body, vec, location):
+        
+        """Creates a constant magnitude force object given the force vector and location
+        
+        body: rigid body object. Body to which the constant force should be applied to
+        
+        vec: a vector object created in the desired reference frame
+        loc: an array-like specifying the point on the body at which the force is applied
+        """
+        
+        F_obj = loads.const_force(vec, location)
+        body.add_force(F_obj)
+        
+        
+    def force_TSDA(self, body_i, sp_i_bar, body_j, sq_j_bar, k, l_0, c, h):
+        
+        tsda = loads.TSDA(body_i, sp_i_bar, body_j, sq_j_bar, k, l_0, c, h)
+        self.sys_forces.append(tsda)
+        
+        Fi, Fj = tsda.create_force_objs()
+        
+        body_i.add_force(Fi)
+        body_j.add_force(Fj)
+        
+    
+    def torque_constant(self, body, vec):
+        
+        """Creates a constant magnitude torque object given the torque vector
+        
+        body: rigid body object. Body to which the constant torque should be applied to
+        vec: a vector object created in the desired reference frame
+        """
+        
+        T_obj = loads.const_torque(vec)
+        body.add_torque(T_obj)
+        
+
+    def torque_RSDA(self, body_i, ai_bar, bi_bar, body_j, aj_bar, bj_bar, k, theta_0, c, h):
+        
+        rsda = loads.RSDA(body_i, ai_bar, bi_bar, body_j, aj_bar, bj_bar, k, theta_0, c, h)
+        self.sys_torques.append(rsda)
+        Ti, Tj = rsda.create_torque_objs()
+        
+        body_i.add_torque(Ti)
+        body_j.add_torque(Tj)
+        
+    
+    ######################   SYSTEM COMMANDS   ######################
     
     def phi(self):
         
@@ -593,9 +661,9 @@ class System():
             #set net body force and torque to zero
             F_body = np.zeros((3,1))
             
-            for force, loc in body.forces:
+            for force in body.forces:
                 
-                fi = force.to_global()
+                fi = force.in_global(self.t)
                 F_body += fi
                 
                         #append body specific term to overall vector
@@ -615,18 +683,15 @@ class System():
             N_body = np.zeros((3,1))
             
             #calculate net force on body
-            for force, loc in body.forces:
+            for force in body.forces:
                 
-                fi = force.to_global()
-                
-            #determine how much torque each force creates about the CG
-            #note that force is in global frame but torque vectors are in local frame
-                N_body += tilde(loc) @ body.A.T @ fi
+                torque_from_force = force.resulting_torque(self.t, frame = body)
+                N_body += torque_from_force.to_local(body)
                 
             for torque in body.torques:
                 
-                ti = torque.to_global()
-                N_body += body.A.T @ ti #add torque in local reference frame to net torque
+                ti = torque.to_local(self.t, body)
+                N_body += ti #add torque in local reference frame to net torque
                 
             #we must compute the generalized torques from the actual net torque
             G = body.G

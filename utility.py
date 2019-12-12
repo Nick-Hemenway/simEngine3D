@@ -57,7 +57,48 @@ def normalize(vec):
     
     return vec/np.linalg.norm(vec)
 
+def rotate_x(theta):
+    
+    """Return rotation matrix A for rotation about x-axis by theta"""
+    
+    theta = np.deg2rad(theta)
+    c = np.cos(theta)
+    s = np.sin(theta)
+    
+    A = np.array([[  1, 0,  0 ],
+                   [ 0, c, -s ],
+                   [ 0, s,  c ]])
+    
+    return A
 
+def rotate_y(theta):
+    
+    """Return rotation matrix A for rotation about y-axis by theta"""
+    
+    theta = np.deg2rad(theta)
+    c = np.cos(theta)
+    s = np.sin(theta)
+    
+    A = np.array([[  c,  0, s ],
+                   [ 0,  1, 0 ],
+                   [-s,  0, c ]])
+    
+    return A
+    
+def rotate_z(theta):
+    
+    """Return rotation matrix A for rotation about z-axis by theta"""
+    
+    theta = np.deg2rad(theta)
+    c = np.cos(theta)
+    s = np.sin(theta)
+    
+    A = np.array([[ c, -s, 0 ],
+                   [ s,  c, 0 ],
+                   [ 0,  0, 1 ]])
+    
+    return A
+    
 def main():
     
     v_test = [1,2,3,4]

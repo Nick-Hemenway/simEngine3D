@@ -1,7 +1,105 @@
 import numpy as np
 import rigidbody
-from utility import column, tilde, normalize
+from utility import column, normalize, tilde
+
+"""
+Note: all specific types of forces and torques return a "Force" or "Torque" object
+"""
+
+class Force():
+    
+    def __init__(self, f, loc):
         
+        """
+        f: a function that takes time as an input and returns a vector object
+           representing the force vector
+           
+        loc: an array like marking the location of where the force is being 
+             applied on the rigid body
+        """
+
+        self.f = f
+        self.loc = column(loc)
+        
+    def in_global(self, t):
+        
+        F = self.f(t)
+        return F.in_global()
+    
+    def in_local(self, t):
+        
+        #returns force in frame it was created in
+        
+        F = self.f(t)
+        return F.in_local()
+    
+    def to_local(self, t, frame):
+        
+        #returns force in arbitary reference frame "frame"
+        
+        F = self.f(t)
+        return F.to_local(frame)
+    
+    def resulting_torque(self, t, frame):
+        
+        #frame is rigid_bodies frame that the force is being applied to
+        
+        F = self.f(t) #vector object
+        force = F.to_local(frame) #bring it into the bodies local frame
+        
+        T = tilde(self.loc) @ force #torque in local frame as np array
+        
+        #make torque into actual vector object
+        T = rigidbody.Vector(T, frame)
+        
+        return T
+    
+class Torque():
+    
+    def __init__(self, f):
+        
+        """
+        f: a function that takes time as an input and returns a vector object
+           representing the torque vector
+        """
+
+        self.f = f
+        
+    def in_global(self, t):
+        
+        T = self.f(t)
+        return T.in_global()
+    
+    def in_local(self, t):
+        
+        #returns torque in frame it was created in
+        
+        T = self.f(t)
+        return T.in_local()
+    
+    def to_local(self, t, frame):
+        
+        #returns torque in arbitary reference frame "frame"
+        
+        T = self.f(t)
+        return T.to_local(frame)
+        
+        
+def const_force(vec, loc):
+    
+    #vec is a vector object from within rigidbody.py
+    #loc is location of force application
+    f = lambda t: vec
+    
+    return Force(f, loc)
+
+def const_torque(vec):
+    
+    #vec is a vector object from within rigidbody.py
+    f = lambda t: vec
+    
+    return Torque(f)
+    
 class TSDA():
     
     """Translational Spring-Damper-Actuator"""
@@ -24,6 +122,8 @@ class TSDA():
         self.body_i = body_i
         self.body_j = body_j
         
+        self.sp_i_bar = sp_i_bar
+        self.sq_j_bar = sq_j_bar
         self.P = rigidbody.Point(sp_i_bar, body_i)
         self.Q = rigidbody.Point(sq_j_bar, body_j)
         
@@ -48,30 +148,55 @@ class TSDA():
         
         #position level calcs
         dij = rQ-rP
+        
         lij = np.linalg.norm(dij)
         
         eij = dij/lij #unit vector pointing from point P to point Q
         
         #velocity level calcs
-        Vpq = vP - vQ #relative velocity of P w.r.t. Q
+        dij_dot = vQ - vP
         
-        #project relative velocity along unit vector in direction of two points
-        lij_dot = (Vpq.T @ eij)[0,0] 
+        lij_dot = ((dij_dot.T @ dij)/(np.sqrt(dij.T @ dij)) ).item()
         
         return eij, lij, lij_dot
     
-    def __call__(self, t):
+    def _force_info(self, t):
         
         eij, lij, lij_dot = self._calc_info()
         
         F_mag = self.k*(lij - self.l_0) + self.c*lij_dot + self.h(lij, lij_dot, t)
         
         #eij points from P to Q
-        Fp = F_mag*eij
-        Fq = -F_mag*eij
+        return F_mag, eij
+    
+    def Fi(self, t):
         
-        return Fp, Fq
-
+        #returns force object for force on body i
+        F_mag, eij = self._force_info(t)
+        eij_local = self.body_i.A.T @ eij
+        
+        F_vec = self.body_i.vector(F_mag*eij_local)
+        
+        return F_vec
+    
+    def Fj(self, t):
+        
+        #returns force object for force on body j
+        F_mag, eij = self._force_info(t)
+        eij_local = self.body_j.A.T @ -eij
+        
+        F_vec = self.body_j.vector(F_mag*eij_local)
+        
+        return F_vec
+    
+    def create_force_objs(self):
+        
+        #creates force objects by passing force methods in as functions to the
+        #force obj constructor
+        Fi = Force(self.Fi, loc = self.sp_i_bar)
+        Fj = Force(self.Fj, loc = self.sq_j_bar)
+        
+        return Fi, Fj
         
 class RSDA():
     
@@ -113,6 +238,19 @@ class RSDA():
         
         self.theta_old = 0
         self.n = 0 #number of full revolutions
+        
+    def set_num_revolutions(self, n):
+        
+        """Manually set the number of revolutions for the revolution counter
+        
+        This function can be useful if you want to set an offset in the 
+        revolution count of the RSDA joint. One particularly important use case
+        is if you want the initial angle at the start of the simulation to be 
+        negative instead of positive. In this case the initial revolutions should
+        be set to be n = -1
+        
+        """
+        self.n = n
     
     def _calc_theta_ij(self):
         
@@ -172,10 +310,10 @@ class RSDA():
         
         return theta_dot
         
-    def __call__(self, t):
+    def Ti(self, t):
         
-        theta_ij = self.calc_theta_ij()
-        theta_ij_dot = self.calc_theta_ij_dot()
+        theta_ij = self._calc_theta_ij()
+        theta_ij_dot = self._calc_theta_ij_dot()
         
         T_mag = (self.k*(theta_ij - self.theta_0) + self.c*theta_ij_dot
                  + self.h(theta_ij, theta_ij_dot, t))
@@ -185,24 +323,30 @@ class RSDA():
         
         ai = self.body_i.A @ self.ai_bar
         Ti = T_mag*ai
+        Ti_bar = self.body_i.A.T @ Ti
+        
+        Ti_bar = rigidbody.Vector(Ti_bar, self.body_i)  #turn Ti_bar into vector object      
+        
+        return Ti_bar
+    
+    
+    def Tj(self, t):
+        
+        Ti_bar = self.Ti(t)
+        Ti = Ti_bar.in_global()
         Tj = -Ti
         
-        Ti_bar = self.body_i.A.T @ Ti
         Tj_bar = self.body_j.A.T @ Tj
+        Tj_bar = rigidbody.Vector(Tj_bar, self.body_j)
         
-        return Ti_bar, Tj_bar
+        return Tj_bar
     
-
-
-
-
-
-
-
-
-
-
-
-
-    
+    def create_torque_objs(self):
+        
+        #creates force objects by passing force methods in as functions to the
+        #force obj constructor
+        Ti = Torque(self.Ti)
+        Tj = Torque(self.Tj)
+        
+        return Ti, Tj
     
