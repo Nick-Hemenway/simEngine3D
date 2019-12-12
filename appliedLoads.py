@@ -6,6 +6,8 @@ from utility import column, normalize, tilde
 Note: all specific types of forces and torques return a "Force" or "Torque" object
 """
 
+np.seterr(invalid = 'raise')
+
 class Force():
     
     def __init__(self, f, loc):
@@ -252,7 +254,7 @@ class RSDA():
         """
         self.n = n
     
-    def _calc_theta_ij(self):
+    def calc_theta(self):
         
         #convert needed vectors to global frame
         bi = self.body_i.A @ self.bi_bar
@@ -270,7 +272,11 @@ class RSDA():
         c = bi @ bj
         s = gi @ bj
         
-        arc = np.arcsin(s)
+        try:
+            arc = np.arcsin(s)
+        except FloatingPointError:
+            s = np.sign(s)
+            arc = np.arcsin(s)
         
         if (s>=0) and (c>=0):
             theta = arc
@@ -296,7 +302,7 @@ class RSDA():
         
         return theta + 2*self.n*np.pi
     
-    def _calc_theta_ij_dot(self):
+    def calc_theta_dot(self):
         
         #see eq. 9.2.62 on page 335 of Haug
         Ai = self.body_i.A
@@ -312,8 +318,8 @@ class RSDA():
         
     def Ti(self, t):
         
-        theta_ij = self._calc_theta_ij()
-        theta_ij_dot = self._calc_theta_ij_dot()
+        theta_ij = self.calc_theta()
+        theta_ij_dot = self.calc_theta_dot()
         
         T_mag = (self.k*(theta_ij - self.theta_0) + self.c*theta_ij_dot
                  + self.h(theta_ij, theta_ij_dot, t))

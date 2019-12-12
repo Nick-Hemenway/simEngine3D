@@ -29,14 +29,23 @@ J = [Ixx, Iyy, Izz]
 
 rod = sys1.add_body(m = m, J = J) #create rod body
 
+#initial conditions
+theta_init = 90
+theta_dot_init = 0
+
+A0 = sim.utility.rotate_x(theta_init)
+rod.set_orientation_from_A(A0)
+rod.set_ang_vel_from_omega([theta_dot_init, 0, 0])
+
 #%% ############   ADD RSDA ELEMENT   ############
 
 theta_0 = 0 #initial spring postion in degrees
-k = 0 #N/m
-c = 0 #damping N/(m/s)
-actuator = lambda theta, theta_dot, t: -5
+k = 10 #N/m
+c = 2 #damping N/(m/s)
+T_act = 0
+actuator = lambda theta, theta_dot, t: -T_act
 
-sys1.torque_RSDA(body_i = sys1.global_frame, ai_bar = [1,0,0], bi_bar = [0,1,0], 
+RSDA = sys1.torque_RSDA(body_i = sys1.global_frame, ai_bar = [1,0,0], bi_bar = [0,1,0], 
                  body_j = rod, aj_bar = [1,0,0], bj_bar = [0,1,0], k=k, 
                  theta_0 = theta_0, c = c, h = actuator)
 
@@ -55,14 +64,16 @@ sys1.initialize()
 
 #variables of interest
 omega = [rod.omega.flatten()]
+theta = [np.rad2deg(RSDA.calc_theta())]
 
-t_stop = 6
+t_stop = 10
 time = [0]
 
 while sys1.t < t_stop:
     
     sys1.step(tol = 1e-3)
     omega.append(rod.omega.flatten())
+    theta.append(np.rad2deg(RSDA.calc_theta()))
     
     time.append(sys1.t)
     sys1.print_time(num_steps=20)
@@ -70,27 +81,30 @@ while sys1.t < t_stop:
         
 #%% ############   ANALYTICAL SOLUTION   ############     
         
-# t_analytic = np.linspace(0, t_stop, 100)
-        
-# omega_n = np.sqrt(k/m)
-# zeta = c/(2*m*omega_n)
+t_analytic = np.linspace(0, t_stop, 100)
 
-# #case 1: Underdamped
-# if zeta < 1:
-#     omega_d = omega_n*np.sqrt(1-zeta)
+omega_n = np.sqrt(k/Ixx)
+zeta = c/(2*Ixx*omega_n)
+
+#case 1: Underdamped
+if zeta < 1:
+    omega_d = omega_n*np.sqrt(1-zeta)
     
-#     z_analytic = np.exp(-zeta*omega_n*t_analytic)*(h0*np.cos(omega_d*t_analytic) + (v0 + zeta*omega_n*h0)/omega_d*np.sin(omega_d*t_analytic))
-
+    theta_analytic = np.exp(-zeta*omega_n*t_analytic)*(theta_init*np.cos(omega_d*t_analytic) + (theta_dot_init + zeta*omega_n*theta_init)/omega_d*np.sin(omega_d*t_analytic))
+        
+# omega_analytic = T_act/Ixx*t_analytic
         
 #%% ############   POST PROCESSING AND PLOTTING   ############        
         
 omega = np.vstack(omega)
+theta = np.array(theta)
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
-ax.plot(time, omega[:,0], label = 'Simulated')
-# ax.plot(t_analytic, z_analytic, ls = '--', label = 'Analytic')
+# ax.plot(time, omega[:,0], label = 'Simulated')
+ax.plot(time, theta, label = 'Simulated')
+ax.plot(t_analytic, theta_analytic, ls = '--', label = 'Analytic')
 
 ax.set_xlabel('Time, t [s]')
 ax.set_ylabel('Angular Velocity, $\omega$ [rad/s]')

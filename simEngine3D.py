@@ -265,6 +265,8 @@ class System():
         body_i.add_force(Fi)
         body_j.add_force(Fj)
         
+        return self.sys_forces[-1]
+        
     
     def torque_constant(self, body, vec):
         
@@ -286,6 +288,8 @@ class System():
         
         body_i.add_torque(Ti)
         body_j.add_torque(Tj)
+        
+        return self.sys_torques[-1]
         
     
     ######################   SYSTEM COMMANDS   ######################
