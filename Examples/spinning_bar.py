@@ -17,8 +17,6 @@ L = 1 #Total length of rod
 rho = 7800 #kg/m^3
 w = 0.05 #m
 
-############   ROD 1   ############
-
 m = rho*L*w**2
 
 Ixx = (1/12)*m*(L**2 + w**2)
@@ -33,6 +31,7 @@ rod = sys1.add_body(m = m, J = J) #create rod body
 theta_init = 90
 theta_dot_init = 0
 
+#set rods initial orientation and angular velocity
 A0 = sim.utility.rotate_x(theta_init)
 rod.set_orientation_from_A(A0)
 rod.set_ang_vel_from_omega([theta_dot_init, 0, 0])
@@ -92,8 +91,6 @@ if zeta < 1:
     
     theta_analytic = np.exp(-zeta*omega_n*t_analytic)*(theta_init*np.cos(omega_d*t_analytic) + (theta_dot_init + zeta*omega_n*theta_init)/omega_d*np.sin(omega_d*t_analytic))
         
-# omega_analytic = T_act/Ixx*t_analytic
-        
 #%% ############   POST PROCESSING AND PLOTTING   ############        
         
 omega = np.vstack(omega)
@@ -107,6 +104,6 @@ ax.plot(time, theta, label = 'Simulated')
 ax.plot(t_analytic, theta_analytic, ls = '--', label = 'Analytic')
 
 ax.set_xlabel('Time, t [s]')
-ax.set_ylabel('Angular Velocity, $\omega$ [rad/s]')
+ax.set_ylabel('Angular Displacement, $\\theta$ [$\degree$]')
 # ax.legend()
 fig.tight_layout()
