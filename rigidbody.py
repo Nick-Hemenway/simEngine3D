@@ -145,18 +145,41 @@ class ReferenceFrame():
     
 class Vector():
     
+    """
+    Class for describing vectors in general
+    
+    All vectors have an associated reference frame that they are created in
+    """
+    
     def __init__(self, vec, frame):
+        
+        """
+        vec: the vector represented in the reference frame "frame"
+        frame: the local frame that the input vector is represented in (can be
+               the global frame)
+        """
         
         self.frame = frame
         self.vec = column(vec)
         
-    def to_global(self):
+    def in_global(self):
         
+        #returns the local vector in the global frame
         return self.frame.A @ self.vec
     
-    def to_local(self):
+    def in_local(self):
         
+        #returns the vector in the local frame that it was created
         return self.vec
+    
+    def to_local(self, frame):
+        
+        #frame is the frame to which you want the vector to be expressed in
+        
+        glob_vec = self.in_global() #convert vector object to local frame
+        local_vec = frame.A.T @ glob_vec #convert global vector to frame of interest
+        
+        return local_vec
     
     def __mul__(self, scalar):
         
@@ -167,6 +190,13 @@ class Vector():
         return Vector(vec = self.vec*scalar, frame = self.frame)
     
 class Point():
+    
+    """
+    A point is different from a vector in that it has a body associated with it
+    and not just a reference frame. The point describes a point on a rigid body
+    and allows users to do things like determine the position, velocicity, and 
+    acceleration of any point on a rigid body.
+    """
     
     def __init__(self, vec, body):
         
@@ -247,17 +277,17 @@ class RigidBody(ReferenceFrame):
         
         return p
     
-    def add_force(self, force_vec, location):
+    def add_force(self, force):
         
         """force_vec must be a vector object"""
         
-        self.forces.append( (force_vec, column(location)) )
+        self.forces.append(force)
         
-    def add_torque(self, torque_vec):
+    def add_torque(self, torque):
         
         """torque must be a vector object"""
         
-        self.torques.append( torque_vec )
+        self.torques.append(torque)
         
     
 
