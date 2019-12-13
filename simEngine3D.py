@@ -53,7 +53,7 @@ class System():
     def print_time(self, num_steps = 20):
         
         if self.step_num % num_steps == 0:
-            print(self.t)
+            print(f't: {self.t:.3f}')
         
     def set_gravity(self, vec):
         
@@ -915,11 +915,6 @@ class System():
         
         r_ddot, p_ddot = self._get_generalized_coords(level = 2)
 
-#        print(r_h)
-#        print(p_h)
-#        print(r_dot_h)
-#        print(p_dot_h)
-        
         sol = np.zeros( (8*nb + nc, 1) )
         
         offset1 = 3*nb

@@ -26,19 +26,19 @@ bob = sys1.add_body(m = m, J = J) #create spherical bob
 
 #%% ############   ADD SPRING AND DAMPER   ############
 
-l0 = 0.2 #unstretched spring length
+l0 = 0 #unstretched spring length
 k = 100 #N/m
 c = 5 #damping N/(m/s)
 # c = 0
 actuator = lambda l, l_dot, t: 0
 
-neutral_length = l0 + m*9.80665/k #position of mass at rest accounting for gravity
+resting_pos = l0 + m*9.80665/k #position of mass at rest accounting for gravity
 
 #initial conditions
 h0 = 0.1
 v0 = 0
 
-bob.set_position([0, 0, -neutral_length + h0]) #bob starts sitting at springs unstretched position
+bob.set_position([0, 0, -resting_pos + h0]) #bob starts sitting at springs unstretched position
 bob.set_vel([0, 0, v0])
 
 sys1.force_TSDA(sys1.global_frame, [0,0,0], bob, [0,0,0], k, l0, c, actuator)
@@ -70,28 +70,26 @@ while sys1.t < t_stop:
     v.append(bob.r_dot.flatten())
     
     time.append(sys1.t)
-
-    if sys1.step_num % 20 == 0:
-        print(sys1.t)
+    sys1.print_time(num_steps = 20)
         
 #%% ############   ANALYTICAL SOLUTION   ############     
         
-t_analytic = np.linspace(0, t_stop, 100)
+# t_analytic = np.linspace(0, t_stop, 100)
         
-omega_n = np.sqrt(k/m)
-zeta = c/(2*m*omega_n)
+# omega_n = np.sqrt(k/m)
+# zeta = c/(2*m*omega_n)
 
-#case 1: Underdamped
-if zeta < 1:
-    omega_d = omega_n*np.sqrt(1-zeta)
+# #case 1: Underdamped
+# if zeta < 1:
+#     omega_d = omega_n*np.sqrt(1-zeta)
     
-    z_analytic = np.exp(-zeta*omega_n*t_analytic)*(h0*np.cos(omega_d*t_analytic) + (v0 + zeta*omega_n*h0)/omega_d*np.sin(omega_d*t_analytic))
+#     z_analytic = np.exp(-zeta*omega_n*t_analytic)*(h0*np.cos(omega_d*t_analytic) + (v0 + zeta*omega_n*h0)/omega_d*np.sin(omega_d*t_analytic))
 
         
 #%% ############   POST PROCESSING AND PLOTTING   ############        
         
 r = np.vstack(r)
-r += neutral_length #add neutral length so that it oscillates about zero
+r += resting_pos #add resting pos so that it oscillates about zero
 
 v = np.vstack(v)
 v_max = v.max()
@@ -99,10 +97,10 @@ v_max = v.max()
 fig = plt.figure()
 ax = fig.add_subplot(111)
 
-# ax.axhline(-neutral_length, ls = '--', color = 'k', zorder = -1)
-ax.axhline(0, ls = '-', lw = 1, color = 'k', zorder = -1)
+# ax.axhline(-resting_pos, ls = '--', color = 'k', zorder = -1)
+# ax.axhline(0, ls = '-', lw = 1, color = 'k', zorder = -1)
 ax.plot(time, r[:,2], label = 'Simulated')
-ax.plot(t_analytic, z_analytic, ls = '--', label = 'Analytic')
+# ax.plot(t_analytic, z_analytic, ls = '--', label = 'Analytic')
 
 ax.set_xlabel('Time, t [s]')
 ax.set_ylabel('Bob Position, $z$ [m]')
