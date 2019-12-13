@@ -4,10 +4,11 @@ sys.path.append('..')
 
 import numpy as np
 from Gcons import GconPrimitives as prim
+from utility import tilde, column
 
 class DerivedConstraint():
     
-    def __init__(self, gcon_list, body_i, body_j):
+    def __init__(self, gcon_list, body_i, body_j, sp_i_bar = None, sq_j_bar =  None):
         
         self.gcon_list = gcon_list
         
@@ -16,6 +17,19 @@ class DerivedConstraint():
         
         self.i_idx = body_i.idx #index of body i in bodies list at system level
         self.j_idx = body_j.idx #index of body j in bodies list at system level
+        
+        #the following attributes are the location of the joint relative to each
+        #body's center of gravity. It is used for computing reaction forces 
+        #about the joint. If no locations are given, the vectors default to zero
+        #vectors and the 'reaction()' method will simply return the reactons 
+        #about the center of gravity.
+        if sp_i_bar == None: 
+            #if a location for the joint
+            sp_i_bar = np.zeros((3,1))
+            sq_j_bar = np.zeros((3,1))
+        else:
+            self.sp_i_bar = column(sp_i_bar) #location of joint on body i
+            self.sq_j_bar = column(sq_j_bar) #location of joint on body j
         
         self.lagrange = None
         
@@ -113,6 +127,38 @@ class DerivedConstraint():
         
         return T
     
+    def reaction(self, body = 'i'):
+        
+        """Calculate reaction forces and torques at the joint location
+        
+        The reaction forces and torques are computed about the center of gravity
+        automatically but it would be more useful to translate the torques to 
+        to actually be about the joint so that we could use it to determine the
+        torque required by a motor. To do this we do the following:
+            
+        Tg = rxF + T_joint --> T_joint = Tg - r x F
+        
+        Where Tg is the net torque that the contraint creates about the center 
+        of gravity and is created by a combination of a moment about the joint
+        plus the effects of the reaction for F being applied at the joint. To 
+        determine the effects of just the moment at the joint, we must subtract
+        off the contribution of the force at some lever arm from the net torque
+        """
+        
+        #calculate reaction forces about center of gravity
+        Tg = self.reaction_torque(body) #net torque about center of gravity
+        Fg = self.reaction_force(body) #net force located at center of gravity
+        
+        if body.lower() == 'j':
+            r = self.body_j.A @ self.sq_j_bar
+        else:
+            r = self.body_i.A @ self.sp_i_bar
+        
+        T_joint = Tg - tilde(r) @ Fg
+        
+        return T_joint, Fg
+        
+        
 class GconPerp1(DerivedConstraint):
     
     """The perpendicular 1 constraint is discussed on slide 32 of lecture 8"""
