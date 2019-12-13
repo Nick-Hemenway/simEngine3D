@@ -191,7 +191,7 @@ fig.tight_layout()
 
 ########################   ANIMATION   ########################
 
-animate = True
+animate = False
 
 if animate:
 
