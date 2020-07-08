@@ -81,16 +81,16 @@ while sys1.t < t_stop:
 #%% ############   ANALYTICAL SOLUTION   ############   
     
         
-# t_analytic = np.linspace(0, t_stop, 100)
+t_analytic = np.linspace(0, t_stop, 100)
 
-# omega_n = np.sqrt(1.2*k/Ixx)
-# zeta = c/(2*Ixx*omega_n)
+omega_n = np.sqrt(k/Ixx)
+zeta = c/(2*Ixx*omega_n)
 
-# #case 1: Underdamped
-# if zeta < 1:
-#     omega_d = omega_n*np.sqrt(1-zeta)
+#case 1: Underdamped
+if zeta < 1:
+    omega_d = omega_n*np.sqrt(1-zeta)
     
-#     theta_analytic = np.exp(-zeta*omega_n*t_analytic)*(theta_init*np.cos(omega_d*t_analytic) + (theta_dot_init + zeta*omega_n*theta_init)/omega_d*np.sin(omega_d*t_analytic))
+    theta_analytic = np.exp(-zeta*omega_n*t_analytic)*(theta_init*np.cos(omega_d*t_analytic) + (theta_dot_init + zeta*omega_n*theta_init)/omega_d*np.sin(omega_d*t_analytic))
         
 #%% ############   POST PROCESSING AND PLOTTING   ############        
         
@@ -102,9 +102,9 @@ ax = fig.add_subplot(111)
 
 # ax.plot(time, omega[:,0], label = 'Simulated')
 ax.plot(time, theta, label = 'Simulated')
-# ax.plot(t_analytic, theta_analytic, ls = '--', label = 'Analytic')
+ax.plot(t_analytic, theta_analytic, ls = '--', label = 'Analytic')
 
 ax.set_xlabel('Time, t [s]')
 ax.set_ylabel('Angular Displacement, $\\theta$ [$\degree$]')
-# ax.legend()
+ax.legend()
 fig.tight_layout()
