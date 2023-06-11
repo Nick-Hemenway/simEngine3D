@@ -1,6 +1,4 @@
 #add the parent folder to the search path for importing modules
-import sys
-sys.path.append('..')
 
 import numpy as np
 from scipy.misc import derivative as deriv

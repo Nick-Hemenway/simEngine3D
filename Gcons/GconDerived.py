@@ -1,9 +1,6 @@
-import sys
-sys.path.append('..')
-
-from Gcons import GconPrimitives as prim
-from Gcons import GconIntermediate as inter
-from Gcons.GconIntermediate import DerivedConstraint
+import GconPrimitives as prim
+import GconIntermediate as inter
+from GconIntermediate import DerivedConstraint
 
 class JointSpherical(DerivedConstraint):
     

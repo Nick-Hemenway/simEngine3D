@@ -1,17 +1,9 @@
-#add folders to the path so python knows where to import self made modules from
-import sys
-import pathlib as pl
-Gcon_folder = pl.Path('./Gcons/')
-sys.path.append(str(Gcon_folder))
-
 import numpy as np
 import rigidbody
 import Solvers
 import appliedLoads as loads
 from Gcons import GconPrimitives, GconIntermediate, GconDerived
-import utility
-from utility import column, tilde#, rotate_x, rotate_y, rotate_z
-
+from utility import column
 
 class System():
     
