@@ -2,7 +2,9 @@
 `simengine3D` is a general purpose 3-dimensional physics simulation engine 
 written entirely in python. I created it in grad school while taking "ME 751: Advanced Computational Multibody Dynamics." Instead of deriving the governing differential equations of a system by hand, `simengine3D` allows a user to compose an arbitrary mechanical system in 3D space by defining rigid bodies (inerital properties and dimensions), and joints that connect bodies (ball joints, pin joints, etc.). The user can then apply external loads to the system (springs, dampers, control actuators) and simulate the time evolution of the system (recording reaction torques/forces and system kinematics along the way)
 
+<div style="text-align:center;">
 <img src="./docs/Crank_Slider_Damping.gif" width="500">
+</div>
 
 # Installation
 To install, fork this repository and then clone it locally to your machine. Then: 
