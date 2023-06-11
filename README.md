@@ -15,7 +15,7 @@ To install, fork this repository and then clone it locally to your machine. Then
 
 # How to Use
 
-You will almost always start using `simengine3D` by creating a a `System` object. After instantiating a `System`, you can then add `RigidBody` objects to the system and define joints between the bodies. The easiest way to get started with `simengine3D` is to look at the examples in the `examples` folder.
+You will almost always start using `simengine3D` by creating a a `System` object. After instantiating a `System`, you can begin to add `RigidBody` objects to the system and then define joints between the bodies. The easiest way to get started with `simengine3D` is to look at the examples in the `examples` folder.
 
 # Contributing
 ### Notation
