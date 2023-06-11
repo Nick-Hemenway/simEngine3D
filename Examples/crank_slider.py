@@ -191,14 +191,14 @@ fig.tight_layout()
 
 ########################   ANIMATION   ########################
 
-animate = False
+animate = True
 
 if animate:
 
     print('\nDone with simulation.... Creating animation\n')
 
     import crank_slider_animation
-    crank_slider_animation.animate(fname = 'output/Crank_Slider_Damping.mp4')
+    crank_slider_animation.animate(fname = 'output/Crank_Slider_Damping.gif')
 
     print('\nDone')    
 

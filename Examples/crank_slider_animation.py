@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+plt.style.use('seaborn-darkgrid')
+plt.rcParams['font.family'] = 'Times New Roman'
 
 def update(i, fig, ax, params):
     
@@ -25,7 +27,7 @@ def update(i, fig, ax, params):
     ax.set_xlabel('$y$ [m]')
     ax.set_ylabel('$z$ [m]')
     ax.set_aspect('equal')
-    ax.grid()
+    # ax.grid()
     
     ax.plot(x1, y1, lw = 2)
     ax.plot(x2, y2, lw = 2)
