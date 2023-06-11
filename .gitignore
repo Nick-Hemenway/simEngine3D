@@ -1,6 +1,4 @@
 __pycache__/
-*.svg
-*.png
-*.txt
-/Plots
+*.DS_Store
+examples/output
 
