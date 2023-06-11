@@ -1,7 +1,6 @@
-#add the parent folder to the search path for importing modules
 import numpy as np
-from Gcons import GconPrimitives as prim
-from utility import tilde, column
+from simengine3D.geometric_constraints import primitives as prim
+from simengine3D.utility import tilde, column
 
 class DerivedConstraint():
     

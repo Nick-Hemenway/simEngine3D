@@ -1,5 +1,5 @@
 import numpy as np
-from utility import tilde, column, A_to_p
+from simengine3D.utility import tilde, column, A_to_p
 
 class ReferenceFrame():
     

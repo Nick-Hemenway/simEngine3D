@@ -1,13 +1,13 @@
 import numpy as np
-import rigidbody
-import Solvers
-import appliedLoads as loads
-from Gcons import GconPrimitives, GconIntermediate, GconDerived
-from utility import column
+from simengine3D import rigidbody
+from simengine3D import solvers
+from simengine3D import loads
+import simengine3D.geometric_constraints as gcon
+from simengine3D.utility import column
 
 class System():
     
-    def __init__(self, h = 0.01, order = 2, solver = Solvers.BDF_Solver):
+    def __init__(self, h = 0.01, order = 2, solver = solvers.BDF_Solver):
     
         self.num_bodies = 0
     
@@ -108,7 +108,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconPrimitives.GconDP1(body_i, ai_bar, body_j, aj_bar, constraint_func)
+        con = gcon.GconDP1(body_i, ai_bar, body_j, aj_bar, constraint_func)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -119,7 +119,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconPrimitives.GconDP2(body_i, ai_bar, sp_i_bar, body_j, sq_j_bar, constraint_func)
+        con = gcon.GconDP2(body_i, ai_bar, sp_i_bar, body_j, sq_j_bar, constraint_func)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -130,7 +130,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconPrimitives.GconD(body_i, sp_i_bar, body_j, sq_j_bar, constraint_func)
+        con = gcon.GconD(body_i, sp_i_bar, body_j, sq_j_bar, constraint_func)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -141,7 +141,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconPrimitives.GconCD(body_i, sp_i_bar, body_j, sq_j_bar, c_vec, constraint_func)
+        con = gcon.GconCD(body_i, sp_i_bar, body_j, sq_j_bar, c_vec, constraint_func)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -152,7 +152,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconIntermediate.GconPerp1(body_i, ai_bar, bi_bar, body_j, cj_bar)
+        con = gcon.GconPerp1(body_i, ai_bar, bi_bar, body_j, cj_bar)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -163,7 +163,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconIntermediate.GconPerp2(body_i, ai_bar, bi_bar, sp_i_bar, body_j, sq_j_bar)
+        con = gcon.GconPerp2(body_i, ai_bar, bi_bar, sp_i_bar, body_j, sq_j_bar)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -172,7 +172,7 @@ class System():
     
     def constraint_func(self, f = None, f_prime = None, f_pprime = None):
         
-        return GconPrimitives.ConstraintFunc(f, f_prime, f_pprime)
+        return gcon.ConstraintFunc(f, f_prime, f_pprime)
     
     ######################   DERIVED JOINTS   ######################
     
@@ -180,7 +180,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconDerived.JointSpherical(body_i, sp_i_bar, body_j, sq_j_bar)
+        con = gcon.JointSpherical(body_i, sp_i_bar, body_j, sq_j_bar)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -191,7 +191,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconDerived.JointUniversal(body_i, sp_i_bar, ai_bar, body_j, sq_j_bar, aj_bar)
+        con = gcon.JointUniversal(body_i, sp_i_bar, ai_bar, body_j, sq_j_bar, aj_bar)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -202,7 +202,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconDerived.JointCylindrical(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar)
+        con = gcon.JointCylindrical(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -213,7 +213,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconDerived.JointRevolute(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar)
+        con = gcon.JointRevolute(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, cj_bar)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)
@@ -224,7 +224,7 @@ class System():
         
         self.num_joints += 1
         
-        con = GconDerived.JointTranslational(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, aj_bar, cj_bar)
+        con = gcon.JointTranslational(body_i, sp_i_bar, ai_bar, bi_bar, body_j, sq_j_bar, aj_bar, cj_bar)
         self.num_constraints += con.DOF_constrained
         
         self.constraints.append(con)

@@ -1,11 +1,5 @@
-#add folders to the path so python knows where to import self made modules from
-import sys
-import pathlib as pl
-Gcon_folder = pl.Path('./Gcons/')
-sys.path.append(str(Gcon_folder))
-
 import numpy as np
-from utility import column
+from simengine3D.utility import column
 
 class BDF_Solver():
     

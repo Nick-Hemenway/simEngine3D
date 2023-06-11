@@ -1,6 +1,6 @@
 import numpy as np
-import rigidbody
-from utility import column, normalize, tilde
+from simengine3D import rigidbody
+from simengine3D.utility import column, normalize, tilde
 
 """
 Note: all specific types of forces and torques return a "Force" or "Torque" object
