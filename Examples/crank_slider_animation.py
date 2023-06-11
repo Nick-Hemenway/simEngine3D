@@ -35,7 +35,7 @@ def update(i, fig, ax, params):
     
 def animate(fname):   
     
-    t, px, py, pz, sx, sy, sz = np.loadtxt('Crank_Slider_Data.txt', unpack=True)
+    t, px, py, pz, sx, sy, sz = np.loadtxt('output/Crank_Slider_Data.txt', unpack=True)
     
     fps = 1/(t[1] - t[0])
     

@@ -1,7 +1,7 @@
 import numpy as np
-import simEngine3D as sim
-import appliedLoads as loads
-import rigidbody
+import simengine3D as sim
+from simengine3D import rigidbody
+from simengine3D import loads
 import matplotlib.pyplot as plt
 
 body_i = rigidbody.RigidBody(m=4, J=[1,1,1], r = [0,0,0], r_dot = [0,0,0])

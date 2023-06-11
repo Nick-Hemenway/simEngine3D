@@ -1,17 +1,12 @@
-###############   IMPORT MODULES   ###############
-#add the parent folder to the search path for importing modules
-import sys
-sys.path.append('..')
-
 import numpy as np
 import matplotlib.pyplot as plt
-import simEngine3D as sim
+import simengine3D as sim
 
-#%% ############   CREATE SYSTEM   ############
+############   CREATE SYSTEM   ############
 
 sys1 = sim.System()
 
-#%% ############   CREATE ROD WITH PIVOT AT CENTER   ############
+############   CREATE ROD WITH PIVOT AT CENTER   ############
 
 L = 1 #Total length of rod
 rho = 7800 #kg/m^3
@@ -36,7 +31,7 @@ A0 = sim.utility.rotate_x(theta_init)
 rod.set_orientation_from_A(A0)
 rod.set_ang_vel_from_omega([theta_dot_init, 0, 0])
 
-#%% ############   ADD RSDA ELEMENT   ############
+############   ADD RSDA ELEMENT   ############
 
 theta_0 = 0 #initial spring postion in degrees
 k = 10 #N/m
@@ -48,7 +43,7 @@ RSDA = sys1.torque_RSDA(body_i = sys1.global_frame, ai_bar = [1,0,0], bi_bar = [
                  body_j = rod, aj_bar = [1,0,0], bj_bar = [0,1,0], k=k, 
                  theta_0 = theta_0, c = c, h = actuator)
 
-#%% ############   START STEPPING THROUGH TIME   ############
+#############   START STEPPING THROUGH TIME   ############
 
 #solver parameters
 h = 0.01 #time step
@@ -78,7 +73,7 @@ while sys1.t < t_stop:
     sys1.print_time(num_steps=20)
     
         
-#%% ############   ANALYTICAL SOLUTION   ############   
+#############   ANALYTICAL SOLUTION   ############   
     
         
 t_analytic = np.linspace(0, t_stop, 100)
@@ -92,7 +87,7 @@ if zeta < 1:
     
     theta_analytic = np.exp(-zeta*omega_n*t_analytic)*(theta_init*np.cos(omega_d*t_analytic) + (theta_dot_init + zeta*omega_n*theta_init)/omega_d*np.sin(omega_d*t_analytic))
         
-#%% ############   POST PROCESSING AND PLOTTING   ############        
+############   POST PROCESSING AND PLOTTING   ############        
         
 omega = np.vstack(omega)
 theta = np.array(theta)

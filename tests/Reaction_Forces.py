@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-x_ddot, y_ddot, z_ddot = np.loadtxt('Acceleration.txt', unpack = True)
+x_ddot, y_ddot, z_ddot = np.loadtxt('acceleration.txt', unpack = True)
 
 dt = 1e-3
 t_end = 10

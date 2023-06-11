@@ -1,5 +1,5 @@
 import numpy as np
-import simEngine3D as sim
+import simengine3D as sim
 import matplotlib.pyplot as plt
 
 ############   CREATE SYSTEM   ############
@@ -175,7 +175,7 @@ point = np.vstack(point)
 
 #save data to text file for making animation
 out_arr = np.hstack((t.reshape(-1,1), point, r_slider))
-np.savetxt('Crank_Slider_Data.txt', out_arr, header = 't, py, py, pz, sx, sy, sz')
+np.savetxt('output/Crank_Slider_Data.txt', out_arr, header = 't, py, py, pz, sx, sy, sz')
 
 
 ########################   PLOTTING   ########################
@@ -198,7 +198,7 @@ if animate:
     print('\nDone with simulation.... Creating animation\n')
 
     import crank_slider_animation
-    crank_slider_animation.animate(fname = 'Crank_Slider_Damping.mp4')
+    crank_slider_animation.animate(fname = 'output/Crank_Slider_Damping.mp4')
 
     print('\nDone')    
 

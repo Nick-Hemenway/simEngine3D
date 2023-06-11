@@ -1,10 +1,5 @@
-###############   IMPORT MODULES   ###############
-#add the parent folder to the search path for importing modules
-import sys
-sys.path.append('..')
-
 import numpy as np
-import simEngine3D as sim
+import simengine3D as sim
 import matplotlib.pyplot as plt
 
 import time as timer

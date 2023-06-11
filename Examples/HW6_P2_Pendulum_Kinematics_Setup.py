@@ -1,10 +1,5 @@
-###############   IMPORT MODULES   ###############
-#add the parent folder to the search path for importing modules
-import sys
-sys.path.append('..')
-
 import numpy as np
-import simEngine3D as sim
+import simengine3D as sim
 
 ############   CREATE SYSTEM   ############
 
@@ -14,7 +9,11 @@ sys1 = sim.System()
 
 L = 2 #length to center of rod = 2 meters
 
-rod = sys1.add_body(r = [0,0,-L]) #create rod body
+m = 1
+J = [1,1,1]
+
+
+rod = sys1.add_body(m=m, J=J, r = [0,0,-L]) #create rod body
 
 A0 = np.array([[0,  0, 1],
                [0,  1, 0],

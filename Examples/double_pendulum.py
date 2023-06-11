@@ -1,5 +1,5 @@
 import numpy as np
-import simEngine3D as sim
+import simengine3D as sim
 import matplotlib.pyplot as plt
 
 ############   CREATE SYSTEM   ############
@@ -22,7 +22,6 @@ Iyy_1 = (1/12)*m1*((2*L)**2 + w**2)
 Izz_1 = Iyy_1
 
 J1 = [Ixx_1, Iyy_1, Izz_1]
-
 theta_0 = np.pi/2
 c = np.cos(theta_0)
 s = np.sin(theta_0)
