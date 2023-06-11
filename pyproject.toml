@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simengine3D"
+description = "A python package for simulating 3D rigidbody dynamic systems"
+dynamic = ["version"]
+authors = [
+    {name = "Nicholas Hemenway", email = "nhemenway2013@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+
+dependencies = [
+    "numpy",
+    "scipy",
+]
+
+#get version number from git tags
+[tool.setuptools_scm]
+#write git version number to _version.py
+write_to = "src/engineering_utils/_version.py"
