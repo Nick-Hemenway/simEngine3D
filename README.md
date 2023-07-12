@@ -6,6 +6,11 @@ written entirely in python. I created it in grad school while taking "ME 751: Ad
 <img src="./docs/Crank_Slider_Damping.gif" width="500">
 </div>
 
+# Endorsement
+At the end of the course, Dr. Dan Negrut (the professor for the class) had this to say about the code:
+
+<img src="./docs/simengine_final_comment.png" width="300">
+
 # Installation
 To install, fork this repository and then clone it locally to your machine. Then: 
 1. (Optional) Create a virtual environment before installing using your tool of choice
